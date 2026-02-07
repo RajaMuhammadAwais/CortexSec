@@ -1,6 +1,6 @@
-# 🧠 AI Autonomous Pentesting Agent
+# 🧠 CortexSec - AI Autonomous Pentesting Agent
 
-An autonomous multi-agent framework for penetration testing, designed for authorized security assessments. This system leverages a multi-agent architecture to plan, recon, analyze vulnerabilities, and assess exploitability without executing attacks.
+CortexSec is an autonomous multi-agent framework for penetration testing, designed for authorized security assessments. This system leverages a multi-agent architecture to plan, recon, analyze vulnerabilities, and assess exploitability without executing attacks.
 
 ## 🚀 Features
 
@@ -48,19 +48,19 @@ An autonomous multi-agent framework for penetration testing, designed for author
 ### 1. Lab Mode (Safety First)
 Test the agent against a local target. Lab mode strictly enforces `localhost` or `127.0.0.1` targets.
 ```bash
-ai-pentest start --target http://localhost:8080 --mode lab
+cortexsec start --target http://localhost:8080 --mode lab
 ```
 
 ### 2. Authorized Assessment
 Perform an assessment on an authorized external target.
 ```bash
-ai-pentest start --target https://example.com --mode authorized
+cortexsec start --target https://example.com --mode authorized
 ```
 
 ### 3. Custom API Key
 You can also provide the API key directly via the CLI:
 ```bash
-ai-pentest start --target https://example.com --mode authorized --api-key YOUR_API_KEY
+cortexsec start --target https://example.com --mode authorized --api-key YOUR_API_KEY
 ```
 
 ## 📊 Reports

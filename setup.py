@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="ai-pentest",
+    name="cortexsec",
     version="0.1.0",
     packages=find_packages(),
     install_requires=[
@@ -19,7 +19,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "ai-pentest=ai_pentest.cli.main:app",
+            "cortexsec=ai_pentest.cli.main:app",
         ],
     },
 )
