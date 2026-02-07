@@ -136,7 +136,8 @@ def test_reasoning_exploitability_and_simulation_agents():
     ]
 
     out = ReasoningAgent(DummyLLM()).run(context)
-    assert out.attack_graph["confirmed_paths"] == 2
+    # 2026 Update: Expect 3 confirmed paths due to attack chaining on Critical finding
+    assert out.attack_graph["confirmed_paths"] == 3
 
     out = ExploitabilityAgent(DummyLLM()).run(out)
     assert out.exploitability_assessment["analyzed_findings"] == 2
