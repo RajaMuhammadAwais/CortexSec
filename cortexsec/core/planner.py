@@ -17,6 +17,8 @@ class SupervisorAgent(BaseAgent):
         causal_threshold: float = 1.0,
         exploitability_threshold: float = 0.75,
         min_stable_cycles: int = 1,
+        max_auto_extensions: int = 2,
+        retry_failed_agents: int = 1,
     ):
         super().__init__("Supervisor", llm)
         self.agents = {agent.name: agent for agent in agents}
@@ -26,6 +28,8 @@ class SupervisorAgent(BaseAgent):
         self.causal_threshold = causal_threshold
         self.exploitability_threshold = exploitability_threshold
         self.min_stable_cycles = min_stable_cycles
+        self.max_auto_extensions = max(0, max_auto_extensions)
+        self.retry_failed_agents = max(0, retry_failed_agents)
 
     def _ensure_learning_state(self, context: PentestContext):
         if not context.orchestrator_learning:
@@ -125,22 +129,56 @@ class SupervisorAgent(BaseAgent):
         stable_cycles = 0
         previous_count = 0
         prev_metrics = {}
+        dynamic_max_cycles = self.max_cycles
+        auto_extensions_used = 0
+
+        context.memory.setdefault("agent_recovery_log", [])
 
         with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), transient=True) as progress:
-            for cycle in range(1, self.max_cycles + 1):
+            cycle = 1
+            while cycle <= dynamic_max_cycles:
                 focus = self._choose_focus(context)
                 workflow = self._workflow_for_focus(focus)
-                self.log(f"Cycle {cycle}/{self.max_cycles} started with focus={focus}")
+                self.log(f"Cycle {cycle}/{dynamic_max_cycles} started with focus={focus}")
 
                 for description, agent_name in workflow:
                     if agent_name not in self.agents:
                         continue
+
                     task_id = progress.add_task(f"[cyan]Cycle {cycle}: {description}...", total=1)
-                    try:
-                        context = self.agents[agent_name].run(context)
+
+                    run_ok = False
+                    last_error = ""
+                    for attempt in range(self.retry_failed_agents + 1):
+                        try:
+                            context = self.agents[agent_name].run(context)
+                            run_ok = True
+                            if attempt > 0:
+                                context.memory["agent_recovery_log"].append(
+                                    {
+                                        "cycle": cycle,
+                                        "agent": agent_name,
+                                        "status": "recovered",
+                                        "attempt": attempt + 1,
+                                    }
+                                )
+                            break
+                        except Exception as e:
+                            last_error = str(e)
+                            self.log(f"Error in {agent_name} (attempt {attempt + 1}): {last_error}")
+
+                    if run_ok:
                         progress.update(task_id, completed=1, description=f"[green]Cycle {cycle}: {description} Complete")
-                    except Exception as e:
-                        self.log(f"Error in {agent_name}: {str(e)}")
+                    else:
+                        context.memory["agent_recovery_log"].append(
+                            {
+                                "cycle": cycle,
+                                "agent": agent_name,
+                                "status": "failed",
+                                "attempts": self.retry_failed_agents + 1,
+                                "error": last_error,
+                            }
+                        )
                         progress.update(task_id, completed=1, description=f"[red]Cycle {cycle}: {description} Failed")
 
                 current_count = len(context.findings)
@@ -152,23 +190,35 @@ class SupervisorAgent(BaseAgent):
                 prev_metrics = dict(context.assessment_metrics)
                 m = context.assessment_metrics
 
-                if (
+                converged = (
                     m["avg_confidence"] >= self.confidence_threshold
                     and m["coverage_score"] >= self.coverage_threshold
                     and m["causal_completeness"] >= self.causal_threshold
                     and m["analyzed_ratio"] >= 1.0
                     and m["min_exploitability_confidence"] >= self.exploitability_threshold
                     and m["stable_cycles_without_new_findings"] >= self.min_stable_cycles
-                ):
+                )
+
+                if converged and context.continuous_improvement and auto_extensions_used < self.max_auto_extensions:
+                    auto_extensions_used += 1
+                    dynamic_max_cycles += 1
+                    self.log(
+                        f"Converged at cycle {cycle}, extending for extra research cycle "
+                        f"({auto_extensions_used}/{self.max_auto_extensions})."
+                    )
+                elif converged and not context.continuous_improvement:
                     context.stop_reason = (
                         f"Stopped at cycle {cycle}: security knowledge converged with all reachable findings analyzed "
                         f"(confidence={m['avg_confidence']}, coverage={m['coverage_score']}, causal={m['causal_completeness']}, "
                         f"exploitability={m['min_exploitability_confidence']}, analyzed={m['analyzed_reachable_findings']}/{m['reachable_findings']})."
                     )
                     break
-            else:
+
+                cycle += 1
+
+            if not context.stop_reason:
                 context.stop_reason = (
-                    f"Stopped after max cycles ({self.max_cycles}) with best available evidence. "
+                    f"Stopped after max cycles ({dynamic_max_cycles}) with best available evidence. "
                     "Increase --max-cycles for deeper convergence if needed."
                 )
 
