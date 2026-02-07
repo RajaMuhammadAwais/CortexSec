@@ -28,9 +28,8 @@ jobs:
           pip install --no-build-isolation -e .
 
       - name: Compile source
-        run: python -m compileall cortexsec ai_pentest
+        run: python -m compileall cortexsec
 
       - name: CLI smoke check
         run: |
           python -m cortexsec.cli.main --help
-          python -m ai_pentest.cli.main --help

@@ -1,6 +1,6 @@
 # 🧠 CortexSec - AI Autonomous Pentesting Agent
 
-[![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/) [![Version](https://img.shields.io/badge/version-0.3.0-informational.svg)](#) [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE) [![CLI](https://img.shields.io/badge/interface-CLI-brightgreen.svg)](#-usage) [![Security](https://img.shields.io/badge/focus-OWASP%20%7C%20CVSS%20%7C%20MITRE-black.svg)](#-features) [![CI](https://github.com/RajaMuhammadAwais/Ai-pentest/actions/workflows/ci.yml/badge.svg)](https://github.com/RajaMuhammadAwais/Ai-pentest/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/) [![Version](https://img.shields.io/badge/version-0.3.0-informational.svg)](#) [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE) [![CLI](https://img.shields.io/badge/interface-CLI-brightgreen.svg)](#-usage) [![Security](https://img.shields.io/badge/focus-OWASP%20%7C%20CVSS%20%7C%20MITRE-black.svg)](#-features) [![CI](https://github.com/RajaMuhammadAwais/CortexSec/actions/workflows/ci.yml/badge.svg)](https://github.com/RajaMuhammadAwais/CortexSec/actions/workflows/ci.yml)
 
 
 CortexSec is a fully autonomous, CLI-based multi-agent framework for continuous security assessment of authorized targets. After execution, agents plan, reason, and coordinate independently to model attack surface, identify weaknesses, and evaluate exploitability without destructive actions.
@@ -23,10 +23,6 @@ CortexSec is a fully autonomous, CLI-based multi-agent framework for continuous 
 - **OWASP + CVSS + MITRE Reporting**: Findings are mapped to major security frameworks for professional reporting.
 
 ## 🛠 Installation
-
-### Namespace Update
-- The public and internal package namespace is now **`cortexsec`**.
-- Backward-compatible imports for **`ai_pentest`** are retained for migration and branch-merge compatibility.
 
 ### Prerequisites
 - Python 3.8+
@@ -83,8 +79,8 @@ sudo pacman -S --needed python python-pip git
 
 #### 2) Clone and enter project
 ```bash
-git clone https://github.com/RajaMuhammadAwais/Ai-pentest.git
-cd Ai-pentest
+git clone https://github.com/RajaMuhammadAwais/CortexSec.git
+cd CortexSec
 ```
 
 #### 3) Create and activate virtual environment
@@ -164,7 +160,6 @@ cortexsec start --target https://example.com --mode authorized --api-key YOUR_AP
 
 
 
-```
 
 ## 📦 Release
 
