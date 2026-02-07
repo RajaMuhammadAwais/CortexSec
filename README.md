@@ -1,5 +1,8 @@
 # 🧠 CortexSec - AI Autonomous Pentesting Agent
 
+[![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/) [![Version](https://img.shields.io/badge/version-0.2.0-informational.svg)](#) [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE) [![CLI](https://img.shields.io/badge/interface-CLI-brightgreen.svg)](#-usage) [![Security](https://img.shields.io/badge/focus-OWASP%20%7C%20CVSS%20%7C%20MITRE-black.svg)](#-features) [![CI](https://github.com/RajaMuhammadAwais/Ai-pentest/actions/workflows/ci.yml/badge.svg)](https://github.com/RajaMuhammadAwais/Ai-pentest/actions/workflows/ci.yml)
+
+
 CortexSec is a fully autonomous, CLI-based multi-agent framework for continuous security assessment of authorized targets. After execution, agents plan, reason, and coordinate independently to model attack surface, identify weaknesses, and evaluate exploitability without destructive actions.
 
 ## 🚀 Features
@@ -124,6 +127,30 @@ You can also provide the API key directly via the CLI:
 cortexsec start --target https://example.com --mode authorized --api-key YOUR_API_KEY
 ```
 
+
+## 🕸️ Architecture Graph
+
+```mermaid
+flowchart TD
+    A[CLI Start] --> B[Supervisor / Orchestrator]
+    B --> C[ReconAgent]
+    C --> D[AttackSurfaceAgent]
+    D --> E[VulnAnalysisAgent]
+    E --> F[ReasoningAgent]
+    F --> G[ExploitabilityAgent]
+    G --> H[RiskAgent]
+    H --> I[AttackSimulationAgent]
+    I --> J[MemoryAgent]
+    J --> K{Stop Criteria Met?}
+    K -- No --> C
+    K -- Yes --> L[ReportAgent]
+    L --> M[Markdown Report]
+
+    N[(OWASP / CVSS / MITRE)] --> L
+```
+
+For a standalone copy of this graph, see `docs/architecture_graph.md`.
+
 ## 📊 Reports
 After the assessment completes, a professional Markdown report is generated in the `reports/` directory. The report includes:
 - **Executive Summary**: High-level overview for management.
@@ -133,4 +160,4 @@ After the assessment completes, a professional Markdown report is generated in t
 
 ## ⚖️ Legal Disclaimer
 
-**IMPORTANT:** This tool is for educational and authorized security testing purposes only. Unauthorized access to computer systems is illegal. The developers assume no liability for any misuse or damage caused by this tool. By using this software, you agree to only target systems you own or have explicit, written permission to test.
+**IMPORTANT:** This tool is for authorized security testing purposes only. Unauthorized access to computer systems is illegal. The developers assume no liability for any misuse or damage caused by this tool. By using this software, you agree to only target systems you own or have explicit, written permission to test.
