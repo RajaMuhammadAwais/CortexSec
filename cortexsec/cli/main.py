@@ -41,7 +41,11 @@ def start(
         console.print("[bold red]Error: Lab mode only supports localhost targets.[/bold red]")
         raise typer.Exit(code=1)
 
-    llm = create_llm(provider=provider, model=model, api_key=api_key)
+    try:
+        llm = create_llm(provider=provider, model=model, api_key=api_key)
+    except ValueError as e:
+        console.print(f"[bold red]Error:[/bold red] {str(e)}")
+        raise typer.Exit(code=1)
 
     agents = [
         ReconAgent(llm),
