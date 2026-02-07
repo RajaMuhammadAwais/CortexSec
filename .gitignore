@@ -5,7 +5,6 @@ __pycache__/
 *.so
 .Python
 env/
-build/
 develop-eggs/
 dist/
 downloads/
@@ -16,23 +15,22 @@ lib64/
 parts/
 sdist/
 var/
-*.egg-info/
 .installed.cfg
 *.egg
+
+# Project Source Code (ignore agents, config files)
+cortexsec/
+ai_pentest/
+reports/
+*.config
+*.cfg
+tests/
 
 # Environments
 .env
 .venv
 venv/
 ENV/
-
-# Reports
-reports/*.md
-!reports/.gitkeep
-
-# IDEs
-.vscode/
-.idea/
 
 # Secret Agent Files
 secret_agent_info/
@@ -43,4 +41,12 @@ agent_memory.json
 # Docs
 docs/
 *.pdf
-!reports/
+
+# IDEs
+.vscode/
+.idea/
+
+# IDE Workspace Files
+*.swp
+*.swo
+*~
