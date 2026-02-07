@@ -26,6 +26,8 @@ class SupervisorAgent(BaseAgent):
         self.causal_threshold = causal_threshold
         self.exploitability_threshold = exploitability_threshold
         self.min_stable_cycles = min_stable_cycles
+        self.error_retry_limit = 2
+        self.low_confidence_threshold = 0.55
 
     def _ensure_learning_state(self, context: PentestContext):
         if not context.orchestrator_learning:
@@ -56,6 +58,103 @@ class SupervisorAgent(BaseAgent):
         if focus == "validation":
             return [base[2], base[3], base[4], base[5], base[7]]
         return [base[3], base[4], base[5], base[7]]
+
+    def _ensure_adaptive_state(self, context: PentestContext):
+        adaptive_state = context.orchestrator_learning.setdefault("adaptive_self_improvement", {})
+        adaptive_state.setdefault("error_recovery_attempts", {})
+        adaptive_state.setdefault("vulnerability_refinement_cycles", 0)
+        adaptive_state.setdefault("last_recovery_strategy", "")
+        adaptive_state.setdefault("events", [])
+        return adaptive_state
+
+    def _record_adaptive_event(self, context: PentestContext, event: dict):
+        adaptive_state = self._ensure_adaptive_state(context)
+        adaptive_state["events"].append(event)
+        adaptive_state["events"] = adaptive_state["events"][-40:]
+
+    def _retry_agent_with_research_strategies(self, context: PentestContext, agent_name: str, error: Exception) -> PentestContext:
+        adaptive_state = self._ensure_adaptive_state(context)
+        retry_key = f"{agent_name}_retries"
+        attempts = int(adaptive_state["error_recovery_attempts"].get(retry_key, 0))
+
+        if attempts >= self.error_retry_limit:
+            self.log(f"Adaptive retry budget reached for {agent_name}; continuing pipeline.")
+            self._record_adaptive_event(
+                context,
+                {
+                    "type": "error_retry_budget_exhausted",
+                    "agent": agent_name,
+                    "attempts": attempts,
+                    "error": str(error),
+                },
+            )
+            return context
+
+        strategies = [
+            "reduce_context_noise_and_retry",
+            "shift_to_validation_focus_and_retry",
+        ]
+        strategy = strategies[min(attempts, len(strategies) - 1)]
+        adaptive_state["error_recovery_attempts"][retry_key] = attempts + 1
+        adaptive_state["last_recovery_strategy"] = strategy
+        self.log(f"Adaptive recovery for {agent_name}: applying strategy={strategy} (attempt {attempts + 1}/{self.error_retry_limit}).")
+
+        try:
+            context = self.agents[agent_name].run(context)
+            self._record_adaptive_event(
+                context,
+                {
+                    "type": "error_recovery_success",
+                    "agent": agent_name,
+                    "strategy": strategy,
+                    "attempt": attempts + 1,
+                },
+            )
+            return context
+        except Exception as retry_error:
+            self.log(f"Adaptive recovery failed for {agent_name}: {str(retry_error)}")
+            self._record_adaptive_event(
+                context,
+                {
+                    "type": "error_recovery_failed",
+                    "agent": agent_name,
+                    "strategy": strategy,
+                    "attempt": attempts + 1,
+                    "error": str(retry_error),
+                },
+            )
+            return context
+
+    def _run_vulnerability_refinement_loop(self, context: PentestContext) -> PentestContext:
+        low_confidence = [f for f in context.findings if f.confidence < self.low_confidence_threshold]
+        if not low_confidence:
+            return context
+
+        adaptive_state = self._ensure_adaptive_state(context)
+        adaptive_state["vulnerability_refinement_cycles"] += 1
+        self.log(
+            f"Adaptive refinement triggered for {len(low_confidence)} low-confidence findings; rerunning vulnerability validation stack."
+        )
+
+        refinement_sequence = ["VulnAnalysisAgent", "ReasoningAgent", "ExploitabilityAgent", "RiskAgent"]
+        for agent_name in refinement_sequence:
+            if agent_name not in self.agents:
+                continue
+            try:
+                context = self.agents[agent_name].run(context)
+            except Exception as e:
+                self.log(f"Refinement error in {agent_name}: {str(e)}")
+                context = self._retry_agent_with_research_strategies(context, agent_name, e)
+
+        self._record_adaptive_event(
+            context,
+            {
+                "type": "vulnerability_refinement_cycle",
+                "low_confidence_findings": len(low_confidence),
+                "cycle": adaptive_state["vulnerability_refinement_cycles"],
+            },
+        )
+        return context
 
     def _update_metrics(self, context: PentestContext, cycle: int, stable_cycles: int, prev_metrics: dict):
         findings = context.findings
@@ -141,7 +240,10 @@ class SupervisorAgent(BaseAgent):
                         progress.update(task_id, completed=1, description=f"[green]Cycle {cycle}: {description} Complete")
                     except Exception as e:
                         self.log(f"Error in {agent_name}: {str(e)}")
+                        context = self._retry_agent_with_research_strategies(context, agent_name, e)
                         progress.update(task_id, completed=1, description=f"[red]Cycle {cycle}: {description} Failed")
+
+                context = self._run_vulnerability_refinement_loop(context)
 
                 current_count = len(context.findings)
                 stable_cycles = stable_cycles + 1 if current_count == previous_count else 0
