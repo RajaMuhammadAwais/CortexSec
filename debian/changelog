@@ -1,7 +1,11 @@
 cortexsec (0.3.0-1) unstable; urgency=medium
 
-  * Add Debian packaging for native Linux .deb distribution.
-  * Keep autonomous orchestrator non-destructive and policy-bounded.
-  * Add APT-oriented install/update documentation.
+  * Initial release of CortexSec v0.3.0
+  * Add comprehensive Debian packaging for native Linux .deb distribution
+  * Multi-agent autonomous pentesting framework with OWASP/CVSS/MITRE compliance
+  * Support for OpenAI, Anthropic Claude, and Google Gemini LLM providers
+  * Professional report generation with attack surface and exploitability analysis
+  * Non-destructive security assessment with policy-bounded autonomy
+  * APT package management support for easy installation and updates
 
- -- CortexSec Maintainers <security@cortexsec.local>  Fri, 07 Feb 2026 10:00:00 +0000
+ -- Raja Muhammad Awais <muhammadawaisturk1@gmail.com>  Fri, 07 Feb 2026 10:00:00 +0000

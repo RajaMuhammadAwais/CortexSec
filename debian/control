@@ -1,16 +1,33 @@
 Source: cortexsec
 Section: utils
 Priority: optional
-Maintainer: CortexSec Maintainers <security@cortexsec.local>
-Build-Depends: debhelper-compat (= 13), dh-python, python3-all, python3-setuptools
+Maintainer: Raja Muhammad Awais <muhammadawaisturk1@gmail.com>
+Home-page: https://github.com/RajaMuhammadAwais/CortexSec
+Vcs-Git: https://github.com/RajaMuhammadAwais/CortexSec.git
+Vcs-Browser: https://github.com/RajaMuhammadAwais/CortexSec
+Build-Depends: debhelper-compat (= 13), dh-python, python3-all (>= 3.8), python3-setuptools, python3-wheel
+Build-Depends-Indep: python3-all-dev, python3-pytest
 Standards-Version: 4.6.2
 Rules-Requires-Root: no
 
 Package: cortexsec
+Version: 0.3.0-1
 Architecture: all
-Depends: ${misc:Depends}, ${python3:Depends}, python3, python3-requests, python3-rich
+Depends: ${misc:Depends}, ${python3:Depends}, python3 (>= 3.8), python3-requests, python3-rich, python3-pydantic, python3-dotenv, python3-yaml
+Breaks: ai-pentest (<< 0.3.0)
+Replaces: ai-pentest
 Description: CortexSec autonomous CLI multi-agent security assessment framework
  CortexSec is a policy-bounded autonomous CLI framework for authorized real-world
- security assessments. It performs non-destructive reconnaissance, attack-surface
- modeling, vulnerability analysis, exploitability reasoning, and report generation
- aligned to OWASP, CVSS, and MITRE mappings.
+ security assessments. It performs comprehensive non-destructive security testing
+ including reconnaissance, attack-surface modeling, vulnerability discovery,
+ exploitability reasoning, and professional report generation. Findings are mapped
+ to industry standards: OWASP Top 10, CVSS severity scoring, and MITRE ATT&CK
+ threat framework. Supports multiple LLM providers (OpenAI, Anthropic, Google).
+ .
+ Features:
+  * Multi-agent autonomous orchestration
+  * OWASP, CVSS, and MITRE ATT&CK compliance
+  * Non-destructive security testing with policy boundaries
+  * Causal attack graph reasoning
+  * Professional technical and executive reporting
+  * LLM-agnostic architecture
