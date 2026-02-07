@@ -32,6 +32,10 @@ def start(
     causal_threshold: float = typer.Option(1.0, "--causal-threshold", help="Stop when attack-graph causal completeness reaches this"),
     exploitability_threshold: float = typer.Option(0.75, "--exploitability-threshold", help="Minimum exploitability confidence required across reachable findings"),
     min_stable_cycles: int = typer.Option(1, "--min-stable-cycles", help="Require this many cycles with no new findings before stopping"),
+    continuous_improvement: bool = typer.Option(False, "--continuous-improvement", help="Keep refining even after convergence by extending extra cycles"),
+    max_auto_extensions: int = typer.Option(2, "--max-auto-extensions", help="Maximum extra cycles when continuous improvement is enabled"),
+    retry_failed_agents: int = typer.Option(1, "--retry-failed-agents", help="Retries per agent when a cycle step fails"),
+    vuln_refinement_rounds: int = typer.Option(2, "--vuln-refinement-rounds", help="Extra research-style refinement rounds in vulnerability analysis"),
 ):
     """Start a fully autonomous security assessment."""
     console.print(f"[bold blue]Starting AI Security Assessment for:[/bold blue] {target}")
@@ -50,7 +54,7 @@ def start(
     agents = [
         ReconAgent(llm),
         AttackSurfaceAgent(llm),
-        VulnAnalysisAgent(llm),
+        VulnAnalysisAgent(llm, refinement_rounds=vuln_refinement_rounds),
         ReasoningAgent(llm),
         ExploitabilityAgent(llm),
         RiskAgent(llm),
@@ -68,9 +72,11 @@ def start(
         causal_threshold=causal_threshold,
         exploitability_threshold=exploitability_threshold,
         min_stable_cycles=min_stable_cycles,
+        max_auto_extensions=max_auto_extensions,
+        retry_failed_agents=retry_failed_agents,
     )
 
-    context = PentestContext(target=target, mode=mode)
+    context = PentestContext(target=target, mode=mode, continuous_improvement=continuous_improvement)
     final_context = supervisor.run(context)
 
     console.print("\n[bold green]Assessment Complete![/bold green]")
