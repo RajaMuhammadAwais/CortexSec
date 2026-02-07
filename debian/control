@@ -1,0 +1,16 @@
+Source: cortexsec
+Section: utils
+Priority: optional
+Maintainer: CortexSec Maintainers <security@cortexsec.local>
+Build-Depends: debhelper-compat (= 13), dh-python, python3-all, python3-setuptools
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+
+Package: cortexsec
+Architecture: all
+Depends: ${misc:Depends}, ${python3:Depends}, python3, python3-requests, python3-rich
+Description: CortexSec autonomous CLI multi-agent security assessment framework
+ CortexSec is a policy-bounded autonomous CLI framework for authorized real-world
+ security assessments. It performs non-destructive reconnaissance, attack-surface
+ modeling, vulnerability analysis, exploitability reasoning, and report generation
+ aligned to OWASP, CVSS, and MITRE mappings.

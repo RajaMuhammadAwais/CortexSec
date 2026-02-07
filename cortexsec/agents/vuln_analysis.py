@@ -1,0 +1,79 @@
+from cortexsec.core.agent import BaseAgent, PentestContext, Finding
+from cortexsec.utils.http_security import run_http_security_quick_checks
+
+
+class VulnAnalysisAgent(BaseAgent):
+    """Agent responsible for analyzing data for vulnerabilities."""
+
+    def __init__(self, llm):
+        super().__init__("VulnAnalysisAgent", llm)
+
+    def _finding_key(self, finding: Finding) -> str:
+        return f"{finding.title}|{finding.evidence}"
+
+    def run(self, context: PentestContext) -> PentestContext:
+        self.log("Analyzing data for vulnerabilities...")
+
+        analysis_prompt = f"""
+        Based on the reconnaissance and attack-surface data:
+        recon={context.recon_data}
+        attack_surface={context.attack_surface}
+
+        Identify potential vulnerabilities. For each vulnerability, provide:
+        - title
+        - description
+        - severity (Low, Medium, High, Critical)
+        - confidence (0.0 to 1.0)
+        - evidence
+        - mitigation
+        - cvss_score (0.0 to 10.0)
+        - owasp_mapping
+        - mitre_mapping
+
+        Return strict JSON: {{"findings": [ ... ]}}
+        """
+
+        results = self.llm.generate_json(analysis_prompt, system_prompt="You are a senior vulnerability researcher.")
+        llm_findings = results.get("findings", []) if isinstance(results, dict) else []
+
+        dedupe = {self._finding_key(f): f for f in context.findings}
+
+        for f_data in llm_findings:
+            finding = Finding(
+                title=f_data.get("title", "Unknown"),
+                description=f_data.get("description", ""),
+                severity=f_data.get("severity", "Low"),
+                confidence=float(f_data.get("confidence", 0.5)),
+                evidence=f_data.get("evidence", ""),
+                mitigation=f_data.get("mitigation", ""),
+                cvss_score=f_data.get("cvss_score"),
+                owasp_mapping=f_data.get("owasp_mapping"),
+                mitre_mapping=f_data.get("mitre_mapping"),
+            )
+            dedupe[self._finding_key(finding)] = finding
+
+        raw_recon = context.recon_data.get("raw", {})
+        headers = raw_recon.get("headers")
+        recon_error = raw_recon.get("error")
+
+        if isinstance(headers, dict) and headers and not recon_error:
+            quick_findings = run_http_security_quick_checks(context.target, headers)
+            for f_data in quick_findings:
+                finding = Finding(
+                    title=f_data["title"],
+                    description=f_data["description"],
+                    severity=f_data["severity"],
+                    confidence=f_data["confidence"],
+                    evidence=f_data["evidence"],
+                    mitigation=f_data.get("mitigation"),
+                    cvss_score=f_data.get("cvss_score"),
+                    owasp_mapping=f_data.get("owasp_mapping"),
+                    mitre_mapping=f_data.get("mitre_mapping"),
+                )
+                dedupe[self._finding_key(finding)] = finding
+        else:
+            self.log("Skipping HTTP quick checks because recon did not return response headers.")
+
+        context.findings = list(dedupe.values())
+        self.log(f"Analysis complete. Total unique findings: {len(context.findings)}")
+        return context

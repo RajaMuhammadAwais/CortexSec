@@ -1,4 +1,5 @@
-"""Backward-compatible shim for ReportAgent."""
+from cortexsec.core.agent import BaseAgent, PentestContext
+import os
 
 
 class ReportAgent(BaseAgent):
@@ -53,6 +54,9 @@ class ReportAgent(BaseAgent):
         Agent Memory:
         {context.memory}
 
+        Orchestrator Learning State:
+        {context.orchestrator_learning}
+
         Assessment Metrics and Stop Condition:
         metrics={context.assessment_metrics}
         stop_reason={context.stop_reason}
@@ -60,12 +64,13 @@ class ReportAgent(BaseAgent):
         Include sections:
         1) Executive Summary
         2) Autonomous Methodology (multi-agent reasoning and coordination)
-        3) Coverage, Confidence, and Causal-Completeness Termination Criteria
+        3) Coverage, Confidence, Causal-Completeness, and Exploitability-Confidence Termination Criteria
         4) Attack-Surface + Attack-Graph Causal Analysis
         5) Detailed Findings with OWASP, CVSS, MITRE mapping
         6) Real-World Exploitability and Business-Impact Evaluation (non-destructive only)
-        7) Prioritized Remediation Roadmap
-        8) Conclusion
+        7) Orchestrator Learning Summary (reward, strategy shifts, convergence)
+        8) Prioritized Remediation Roadmap
+        9) Conclusion
 
         Keep it explainable, concise, and professional markdown.
         """

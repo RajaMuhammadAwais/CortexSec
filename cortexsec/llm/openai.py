@@ -1,7 +1,7 @@
 import os
 from typing import Dict, Any
 from openai import OpenAI
-from ai_pentest.llm.base import BaseLLM
+from cortexsec.llm.base import BaseLLM
 
 class OpenAILLM(BaseLLM):
     def __init__(self, model: str = "gpt-4o", api_key: str = None):

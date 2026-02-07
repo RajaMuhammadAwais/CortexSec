@@ -1,4 +1,4 @@
-from ai_pentest.core.agent import BaseAgent, PentestContext
+from cortexsec.core.agent import BaseAgent, PentestContext
 import requests
 from typing import Dict, Any
 

@@ -1,8 +1,11 @@
-"""Backward-compatible shim for core agent models."""
+from typing import List, Dict, Any, Optional
+from pydantic import BaseModel, Field
+from cortexsec.llm.base import BaseLLM
+import logging
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger("ai-pentest")
+logger = logging.getLogger("cortexsec")
 
 
 class Finding(BaseModel):
@@ -18,6 +21,7 @@ class Finding(BaseModel):
     mitre_mapping: Optional[str] = None
     impact_summary: Optional[str] = None
     exploitability_summary: Optional[str] = None
+    exploitability_confidence: float = 0.0
     reachable: bool = True
     analyzed: bool = False
 
@@ -34,6 +38,7 @@ class PentestContext(BaseModel):
     exploitability_assessment: Dict[str, Any] = Field(default_factory=dict)
     attack_simulation: List[Dict[str, Any]] = Field(default_factory=list)
     memory: Dict[str, Any] = Field(default_factory=dict)
+    orchestrator_learning: Dict[str, Any] = Field(default_factory=dict)
     assessment_metrics: Dict[str, Any] = Field(default_factory=dict)
     stop_reason: str = ""
     history: List[Dict[str, Any]] = Field(default_factory=list)

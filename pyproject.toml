@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.scripts]
-cortexsec = "ai_pentest.cli.main:app"
+cortexsec = "cortexsec.cli.main:app"
 
 [build-system]
 requires = ["setuptools", "wheel"]

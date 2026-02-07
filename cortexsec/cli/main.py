@@ -1,20 +1,22 @@
 import typer
 from rich.console import Console
 from dotenv import load_dotenv
-from ai_pentest.llm.factory import create_llm
-from ai_pentest.core.agent import PentestContext
-from ai_pentest.core.planner import SupervisorAgent
-from ai_pentest.agents.recon import ReconAgent
-from ai_pentest.agents.attack_surface_agent import AttackSurfaceAgent
-from ai_pentest.agents.vuln_analysis import VulnAnalysisAgent
-from ai_pentest.agents.reasoning_agent import ReasoningAgent
-from ai_pentest.agents.exploitability_agent import ExploitabilityAgent
-from ai_pentest.agents.risk_agent import RiskAgent
-from ai_pentest.agents.attack_simulation import AttackSimulationAgent
-from ai_pentest.agents.memory_agent import MemoryAgent
-from ai_pentest.agents.report_agent import ReportAgent
+from cortexsec.llm.factory import create_llm
+from cortexsec.core.agent import PentestContext
+from cortexsec.core.planner import SupervisorAgent
+from cortexsec.agents.recon import ReconAgent
+from cortexsec.agents.attack_surface_agent import AttackSurfaceAgent
+from cortexsec.agents.vuln_analysis import VulnAnalysisAgent
+from cortexsec.agents.reasoning_agent import ReasoningAgent
+from cortexsec.agents.exploitability_agent import ExploitabilityAgent
+from cortexsec.agents.risk_agent import RiskAgent
+from cortexsec.agents.attack_simulation import AttackSimulationAgent
+from cortexsec.agents.memory_agent import MemoryAgent
+from cortexsec.agents.report_agent import ReportAgent
 
-from cortexsec.cli.main import app
+load_dotenv()
+console = Console()
+app = typer.Typer(name="cortexsec", help="CortexSec - Autonomous AI Security Assessment Agent")
 
 
 @app.command()
@@ -28,6 +30,7 @@ def start(
     confidence_threshold: float = typer.Option(0.8, "--confidence-threshold", help="Stop when avg finding confidence reaches this"),
     coverage_threshold: float = typer.Option(0.8, "--coverage-threshold", help="Stop when coverage score reaches this"),
     causal_threshold: float = typer.Option(1.0, "--causal-threshold", help="Stop when attack-graph causal completeness reaches this"),
+    exploitability_threshold: float = typer.Option(0.75, "--exploitability-threshold", help="Minimum exploitability confidence required across reachable findings"),
     min_stable_cycles: int = typer.Option(1, "--min-stable-cycles", help="Require this many cycles with no new findings before stopping"),
 ):
     """Start a fully autonomous security assessment."""
@@ -38,7 +41,11 @@ def start(
         console.print("[bold red]Error: Lab mode only supports localhost targets.[/bold red]")
         raise typer.Exit(code=1)
 
-    llm = create_llm(provider=provider, model=model, api_key=api_key)
+    try:
+        llm = create_llm(provider=provider, model=model, api_key=api_key)
+    except ValueError as e:
+        console.print(f"[bold red]Error:[/bold red] {str(e)}")
+        raise typer.Exit(code=1)
 
     agents = [
         ReconAgent(llm),
@@ -59,6 +66,7 @@ def start(
         confidence_threshold=confidence_threshold,
         coverage_threshold=coverage_threshold,
         causal_threshold=causal_threshold,
+        exploitability_threshold=exploitability_threshold,
         min_stable_cycles=min_stable_cycles,
     )
 
@@ -71,6 +79,8 @@ def start(
     console.print(f"Coverage Score: {final_context.assessment_metrics.get('coverage_score', 0.0)}")
     console.print(f"Average Confidence: {final_context.assessment_metrics.get('avg_confidence', 0.0)}")
     console.print(f"Causal Completeness: {final_context.assessment_metrics.get('causal_completeness', 0.0)}")
+    console.print(f"Min Exploitability Confidence: {final_context.assessment_metrics.get('min_exploitability_confidence', 0.0)}")
+    console.print(f"Orchestrator Reward (last): {final_context.orchestrator_learning.get('last_reward', 0.0)}")
     console.print(
         f"Reachable Findings Analyzed: "
         f"{final_context.assessment_metrics.get('analyzed_reachable_findings', 0)}/"

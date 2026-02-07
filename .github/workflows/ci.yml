@@ -28,7 +28,9 @@ jobs:
           pip install -e .
 
       - name: Compile source
-        run: python -m compileall ai_pentest
+        run: python -m compileall cortexsec ai_pentest
 
       - name: CLI smoke check
-        run: python -m ai_pentest.cli.main --help
+        run: |
+          python -m cortexsec.cli.main --help
+          python -m ai_pentest.cli.main --help

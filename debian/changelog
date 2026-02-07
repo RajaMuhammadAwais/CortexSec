@@ -1,0 +1,7 @@
+cortexsec (0.3.0-1) unstable; urgency=medium
+
+  * Add Debian packaging for native Linux .deb distribution.
+  * Keep autonomous orchestrator non-destructive and policy-bounded.
+  * Add APT-oriented install/update documentation.
+
+ -- CortexSec Maintainers <security@cortexsec.local>  Fri, 07 Feb 2026 10:00:00 +0000
