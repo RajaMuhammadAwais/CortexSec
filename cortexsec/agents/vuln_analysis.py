@@ -5,8 +5,9 @@ from cortexsec.utils.http_security import run_http_security_quick_checks
 class VulnAnalysisAgent(BaseAgent):
     """Agent responsible for analyzing data for vulnerabilities."""
 
-    def __init__(self, llm):
+    def __init__(self, llm, refinement_rounds: int = 2):
         super().__init__("VulnAnalysisAgent", llm)
+        self.refinement_rounds = max(0, refinement_rounds)
 
     def _finding_key(self, finding: Finding) -> str:
         return f"{finding.title}|{finding.evidence}"
