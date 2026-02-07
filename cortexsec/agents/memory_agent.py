@@ -33,7 +33,9 @@ class MemoryAgent(BaseAgent):
             return self._default_memory()
 
     def _save_memory(self, memory):
-        os.makedirs(os.path.dirname(self.memory_path), exist_ok=True)
+        directory = os.path.dirname(self.memory_path)
+        if directory:
+            os.makedirs(directory, exist_ok=True)
         with open(self.memory_path, "w") as f:
             json.dump(memory, f, indent=2)
 
