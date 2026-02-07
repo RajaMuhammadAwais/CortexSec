@@ -1,9 +1,9 @@
 [project]
 name = "cortexsec"
-version = "0.3.0"
+version = "0.2.0"
 description = "CortexSec - Autonomous AI Multi-Agent Pentesting Framework"
 authors = [{ name = "Raja Muhammad Awais", email = "muhammadawaisturk1@gmail.com" }]
-license = "MIT"
+license = { text = "MIT" }
 dependencies = [
     "typer[all]",
     "rich",

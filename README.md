@@ -36,8 +36,8 @@ CortexSec is a fully autonomous, CLI-based multi-agent framework for continuous 
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/RajaMuhammadAwais/Ai-pentest.git
-   cd Ai-pentest
+   git clone https://github.com/RajaMuhammadAwais/CortexSec.git
+   cd CortexSec
    ```
 
 2. **Create a Virtual Environment (Recommended)**
@@ -163,31 +163,8 @@ cortexsec start --target https://example.com --mode authorized --api-key YOUR_AP
 ```
 
 
-## 🕸️ Architecture Graph
 
-```mermaid
-flowchart TD
-    A[CLI Start] --> B[Supervisor / Orchestrator]
-    B --> C[ReconAgent]
-    C --> D[AttackSurfaceAgent]
-    D --> E[VulnAnalysisAgent]
-    E --> F[ReasoningAgent]
-    F --> G[ExploitabilityAgent]
-    G --> H[RiskAgent]
-    H --> I[AttackSimulationAgent]
-    I --> J[MemoryAgent]
-    J --> R[Reward Signal
-(info gain + confidence gain + uncertainty reduction + confirmed paths)]
-    R --> B
-    J --> K{Stop Criteria Met?}
-    K -- No --> C
-    K -- Yes --> L[ReportAgent]
-    L --> M[Markdown Report]
-
-    N[(OWASP / CVSS / MITRE)] --> L
 ```
-
-For a standalone copy of this graph, see `docs/architecture_graph.md`.
 
 ## 📦 Release
 
