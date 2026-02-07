@@ -37,6 +37,18 @@ class ReasoningAgent(BaseAgent):
             edges.append({"from": "target", "to": finding_node_id, "relation": "has_weakness"})
             edges.append({"from": finding_node_id, "to": impact_node_id, "relation": "can_lead_to"})
 
+            # 2026 Logic: Attack Chaining
+            # If critical, infer a derived attack path (e.g., lateral movement or API abuse)
+            if finding.severity == "Critical":
+                chained_node_id = f"chain_{i}"
+                nodes.append({
+                    "id": chained_node_id,
+                    "type": "impact", 
+                    "label": "Lateral Movement / API Abuse (Derived)",
+                    "severity": "High"
+                })
+                edges.append({"from": impact_node_id, "to": chained_node_id, "relation": "enables_chaining"})
+
         weakness_nodes = [n for n in nodes if n["type"] == "weakness"]
         impact_nodes = [n for n in nodes if n["type"] == "impact"]
         causal_completeness = round((len(impact_nodes) / len(weakness_nodes)), 3) if weakness_nodes else 1.0
