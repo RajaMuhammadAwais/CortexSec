@@ -1,8 +1,8 @@
 [project]
-name = "ai-pentest"
+name = "cortexsec"
 version = "0.1.0"
-description = "Autonomous AI Multi-Agent Pentesting Framework"
-authors = [{ name = "Manus", email = "hello@manus.im" }]
+description = "CortexSec - Autonomous AI Multi-Agent Pentesting Framework"
+authors = [{ name = "Raja Muhammad Awais", email = "muhammadawaisturk1@gmail.com" }]
 dependencies = [
     "typer[all]",
     "rich",
@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [project.scripts]
-ai-pentest = "ai_pentest.cli.main:app"
+cortexsec = "ai_pentest.cli.main:app"
 
 [build-system]
 requires = ["setuptools", "wheel"]
