@@ -27,8 +27,8 @@ CortexSec is a fully autonomous, CLI-based multi-agent framework for continuous 
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/RajaMuhammadAwais/Ai-pentest.git
-   cd Ai-pentest
+   git clone https://github.com/RajaMuhammadAwais/CortexSec.git
+   cd CortexSec
    ```
 
 2. **Create a Virtual Environment (Recommended)**
