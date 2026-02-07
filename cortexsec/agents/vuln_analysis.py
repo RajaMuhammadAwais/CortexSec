@@ -52,21 +52,27 @@ class VulnAnalysisAgent(BaseAgent):
             )
             dedupe[self._finding_key(finding)] = finding
 
-        headers = context.recon_data.get("raw", {}).get("headers", {})
-        quick_findings = run_http_security_quick_checks(context.target, headers)
-        for f_data in quick_findings:
-            finding = Finding(
-                title=f_data["title"],
-                description=f_data["description"],
-                severity=f_data["severity"],
-                confidence=f_data["confidence"],
-                evidence=f_data["evidence"],
-                mitigation=f_data.get("mitigation"),
-                cvss_score=f_data.get("cvss_score"),
-                owasp_mapping=f_data.get("owasp_mapping"),
-                mitre_mapping=f_data.get("mitre_mapping"),
-            )
-            dedupe[self._finding_key(finding)] = finding
+        raw_recon = context.recon_data.get("raw", {})
+        headers = raw_recon.get("headers")
+        recon_error = raw_recon.get("error")
+
+        if isinstance(headers, dict) and headers and not recon_error:
+            quick_findings = run_http_security_quick_checks(context.target, headers)
+            for f_data in quick_findings:
+                finding = Finding(
+                    title=f_data["title"],
+                    description=f_data["description"],
+                    severity=f_data["severity"],
+                    confidence=f_data["confidence"],
+                    evidence=f_data["evidence"],
+                    mitigation=f_data.get("mitigation"),
+                    cvss_score=f_data.get("cvss_score"),
+                    owasp_mapping=f_data.get("owasp_mapping"),
+                    mitre_mapping=f_data.get("mitre_mapping"),
+                )
+                dedupe[self._finding_key(finding)] = finding
+        else:
+            self.log("Skipping HTTP quick checks because recon did not return response headers.")
 
         context.findings = list(dedupe.values())
         self.log(f"Analysis complete. Total unique findings: {len(context.findings)}")
