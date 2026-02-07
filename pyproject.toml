@@ -1,0 +1,25 @@
+[project]
+name = "ai-pentest"
+version = "0.1.0"
+description = "Autonomous AI Multi-Agent Pentesting Framework"
+authors = [{ name = "Manus", email = "hello@manus.im" }]
+dependencies = [
+    "typer[all]",
+    "rich",
+    "openai",
+    "anthropic",
+    "google-generativeai",
+    "pydantic",
+    "python-dotenv",
+    "requests",
+    "pyyaml",
+    "fpdf2",
+    "cryptography"
+]
+
+[project.scripts]
+ai-pentest = "ai_pentest.cli.main:app"
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
