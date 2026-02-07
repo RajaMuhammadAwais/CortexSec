@@ -26,6 +26,7 @@ CortexSec is a fully autonomous, CLI-based multi-agent framework for continuous 
 
 ### Namespace Update
 - The public and internal package namespace is now **`cortexsec`**.
+- Backward-compatible imports for **`ai_pentest`** are retained for migration and branch-merge compatibility.
 
 ### Prerequisites
 - Python 3.8+
