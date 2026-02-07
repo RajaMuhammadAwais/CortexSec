@@ -2,21 +2,52 @@
 name = "cortexsec"
 version = "0.3.0"
 description = "CortexSec - Autonomous AI Multi-Agent Pentesting Framework"
-authors = [{ name = "Raja Muhammad Awais", email = "muhammadawaisturk1@gmail.com" }]
-license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">= 3.8"
+license = {text = "MIT"}
+authors = [{name = "Raja Muhammad Awais", email = "muhammadawaisturk1@gmail.com"}]
+maintainers = [{name = "Raja Muhammad Awais", email = "muhammadawaisturk1@gmail.com"}]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: System :: Networking",
+    "Topic :: System :: Monitoring"
+]
+keywords = ["security", "penetration-testing", "vulnerability-assessment", "ai", "autonomous", "owasp", "cvss", "mitre"]
 dependencies = [
     "typer[all]",
     "rich",
-    "openai",
-    "anthropic",
-    "google-generativeai",
-    "pydantic",
-    "python-dotenv",
-    "requests",
-    "pyyaml",
-    "fpdf2",
-    "cryptography"
+    "openai >= 0.28.0",
+    "anthropic >= 0.7.0",
+    "google-generativeai >= 0.3.0",
+    "pydantic >= 2.0.0",
+    "python-dotenv >= 1.0.0",
+    "requests >= 2.31.0",
+    "pyyaml >= 6.0",
+    "fpdf2 >= 2.7.0",
+    "cryptography >= 41.0.0"
 ]
+
+[project.optional-dependencies]
+dev = ["pytest >= 7.0", "pytest-cov >= 4.0", "black >= 23.0", "flake8 >= 6.0"]
+
+[project.urls]
+Homepage = "https://github.com/RajaMuhammadAwais/CortexSec"
+Documentation = "https://github.com/RajaMuhammadAwais/CortexSec#-usage"
+Repository = "https://github.com/RajaMuhammadAwais/CortexSec.git"
+Issues = "https://github.com/RajaMuhammadAwais/CortexSec/issues"
 
 [project.scripts]
 cortexsec = "cortexsec.cli.main:app"
