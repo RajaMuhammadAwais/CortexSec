@@ -1,7 +1,4 @@
 import json
-from pathlib import Path
-
-import pytest
 
 from cortexsec.agents.attack_simulation import AttackSimulationAgent
 from cortexsec.agents.attack_surface_agent import AttackSurfaceAgent
@@ -21,11 +18,14 @@ class DummyLLM:
     def __init__(self, text_response='{"findings": []}', json_response=None):
         self.text_response = text_response
         self.json_response = json_response or {}
+        self.last_system_prompt = ""
 
     def generate(self, prompt: str, system_prompt: str = "") -> str:
+        self.last_system_prompt = system_prompt
         return self.text_response
 
     def generate_json(self, prompt: str, system_prompt: str = ""):
+        self.last_system_prompt = system_prompt
         return self.json_response
 
 
@@ -69,6 +69,11 @@ def test_recon_agent_positive_and_negative(monkeypatch):
     monkeypatch.setattr("requests.get", lambda *_args, **_kwargs: DummyResponse(headers={"Server": "nginx"}))
     out = agent.run(context)
     assert out.recon_data["raw"]["server"] == "nginx"
+    assert "real-world authorized penetration testing practices" in llm.last_system_prompt
+    assert "use terminal commands when required" in llm.last_system_prompt
+    assert "multi-step investigative workflows autonomously" in llm.last_system_prompt
+    assert "CAPTCHA" in llm.last_system_prompt
+    assert "must not provide bot detection or CAPTCHA bypass" in llm.last_system_prompt
 
     def raise_error(*_args, **_kwargs):
         raise OSError("network down")
@@ -123,6 +128,8 @@ def test_vuln_analysis_positive_and_negative_paths():
     out = VulnAnalysisAgent(llm).run(context)
     assert any(f.title == "Weak config" for f in out.findings)
     assert any("Missing" in f.title for f in out.findings)
+    assert "real-world authorized penetration testing practices" in llm.last_system_prompt
+    assert "human-analyst workflow" in llm.last_system_prompt
 
     context.recon_data = {"raw": {"error": "timeout"}, "analysis": {}}
     out = VulnAnalysisAgent(llm).run(context)
@@ -166,10 +173,14 @@ def test_report_agent_writes_markdown(tmp_path, monkeypatch):
     context.findings = [Finding(title="A", description="d", severity="Low", confidence=0.5, evidence="e")]
     monkeypatch.chdir(tmp_path)
 
-    out = ReportAgent(DummyLLM(text_response="# Report")).run(context)
+    llm = DummyLLM(text_response="# Report")
+    out = ReportAgent(llm).run(context)
     report = tmp_path / "reports" / "pentest_report.md"
     assert report.exists()
     assert "# Report" in report.read_text()
+    assert "real-world authorized penetration testing practices" in llm.last_system_prompt
+    assert "use terminal commands when required" in llm.last_system_prompt
+    assert "approved automation integrations" in llm.last_system_prompt
     assert out.target == "https://example.com"
 
 

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="220" viewBox="0 0 720 220" role="img" aria-labelledby="title desc">
+  <title id="title">CortexSec 2D Logo</title>
+  <desc id="desc">A 2D logo with a shield, circuit motif, and CortexSec wordmark.</desc>
+  <defs>
+    <linearGradient id="shieldGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0B1220"/>
+      <stop offset="100%" stop-color="#1F3B8A"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#22D3EE"/>
+      <stop offset="100%" stop-color="#3B82F6"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="720" height="220" rx="18" fill="#0A0F1E"/>
+
+  <!-- Shield mark -->
+  <g transform="translate(26,24)">
+    <path d="M84 8 L148 30 V90 C148 132 119 164 84 176 C49 164 20 132 20 90 V30 Z"
+          fill="url(#shieldGrad)" stroke="#60A5FA" stroke-width="3"/>
+
+    <!-- Circuit nodes -->
+    <circle cx="84" cy="54" r="7" fill="#22D3EE"/>
+    <circle cx="58" cy="82" r="6" fill="#38BDF8"/>
+    <circle cx="110" cy="82" r="6" fill="#38BDF8"/>
+    <circle cx="84" cy="112" r="6" fill="#60A5FA"/>
+
+    <path d="M84 61 V106 M84 54 L58 82 M84 54 L110 82 M58 82 H110"
+          stroke="url(#accentGrad)" stroke-width="4" stroke-linecap="round" fill="none"/>
+
+    <!-- Lock notch -->
+    <rect x="72" y="122" width="24" height="20" rx="5" fill="#0B1220" stroke="#93C5FD" stroke-width="2"/>
+    <path d="M76 122 V114 C76 108 80 104 84 104 C88 104 92 108 92 114 V122"
+          stroke="#93C5FD" stroke-width="2" fill="none"/>
+  </g>
+
+  <!-- Wordmark -->
+  <g transform="translate(210,78)">
+    <text x="0" y="0" font-family="'Segoe UI', Inter, Arial, sans-serif" font-weight="700" font-size="56" fill="#E2E8F0">Cortex</text>
+    <text x="184" y="0" font-family="'Segoe UI', Inter, Arial, sans-serif" font-weight="700" font-size="56" fill="#38BDF8">Sec</text>
+    <text x="2" y="40" font-family="'Segoe UI', Inter, Arial, sans-serif" font-weight="500" font-size="19" fill="#93C5FD" letter-spacing="1.5">AUTONOMOUS SECURITY ASSESSMENT</text>
+  </g>
+</svg>

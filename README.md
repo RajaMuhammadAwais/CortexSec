@@ -1,5 +1,7 @@
 # 🧠 CortexSec - AI Autonomous Pentesting Agent
 
+![CortexSec 2D Logo](docs/assets/cortexsec-logo.svg)
+
 <!-- Project Description -->
 <!-- 
 CortexSec: Advanced AI-powered autonomous pentesting and vulnerability assessment platform. 

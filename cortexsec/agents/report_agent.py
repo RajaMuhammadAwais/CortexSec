@@ -1,5 +1,6 @@
 from cortexsec.core.agent import BaseAgent, PentestContext
 import os
+from cortexsec.agents.real_world_guidance import real_world_prompt
 
 
 class ReportAgent(BaseAgent):
@@ -88,7 +89,10 @@ class ReportAgent(BaseAgent):
         Keep it explainable, concise, and professional markdown.
         """
 
-        report_md = self.llm.generate(report_prompt, system_prompt="You are a professional cybersecurity consultant.")
+        report_md = self.llm.generate(
+            report_prompt,
+            system_prompt=real_world_prompt("professional cybersecurity consultant"),
+        )
 
         report_path = "reports/pentest_report.md"
         os.makedirs("reports", exist_ok=True)
