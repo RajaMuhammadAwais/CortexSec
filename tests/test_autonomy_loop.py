@@ -39,3 +39,17 @@ def test_autonomy_loop_records_thought_action_observation_trace():
     assert "Hypothesis" in entry["thought"]
     assert entry["action"]["command"] == "echo cortexsec"
     assert entry["observation"]["critic_verdict"] in {"accepted", "needs-followup"}
+
+
+def test_command_executor_handles_missing_command():
+    context = PentestContext(target="https://example.com", mode="authorized")
+    result = CommandExecutor().run(context, "definitely-not-a-real-command")
+    assert result.exit_code == 127
+    assert result.stderr == "command-not-found"
+
+
+def test_command_executor_handles_empty_command():
+    context = PentestContext(target="https://example.com", mode="authorized")
+    result = CommandExecutor().run(context, "")
+    assert result.exit_code == 2
+    assert result.stderr == "invalid-command:empty"
