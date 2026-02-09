@@ -12,7 +12,6 @@ from cortexsec.agents.reasoning_agent import ReasoningAgent
 from cortexsec.agents.recon import ReconAgent
 from cortexsec.agents.report_agent import ReportAgent
 from cortexsec.agents.risk_agent import RiskAgent
-from cortexsec.agents.scientist_agent import ScientistAgent
 from cortexsec.agents.vuln_analysis import VulnAnalysisAgent
 from cortexsec.core.agent import BaseAgent, Finding, PentestContext
 from cortexsec.core.planner import SupervisorAgent
@@ -183,7 +182,6 @@ def test_supervisor_retries_failed_agent_and_records_recovery():
         StaticAgent("VulnAnalysisAgent"),
         StaticAgent("ReasoningAgent"),
         StaticAgent("ExploitabilityAgent"),
-        StaticAgent("ScientistAgent"),
         StaticAgent("RiskAgent"),
         StaticAgent("AttackSimulationAgent"),
         StaticAgent("MemoryAgent"),
@@ -275,20 +273,18 @@ def test_cli_destructive_requires_pro_user():
     assert "requires --pro-user" in result.stdout
 
 
-def test_scientist_agent_calibrates_confidence():
+def test_vuln_analysis_embeds_scientific_logic():
     context = base_context()
-    context.findings = [
-        Finding(title="A", description="d", severity="High", confidence=0.6, evidence="e"),
-        Finding(title="B", description="d", severity="Low", confidence=0.4, evidence="e2"),
-    ]
+    context.recon_data = {"raw": {"headers": {"Server": "nginx"}}, "analysis": {}}
     context.payload_tests = [
-        {"status": "needs-review"},
         {"status": "needs-review"},
         {"status": "inconclusive"},
         {"status": "no-strong-signal"},
     ]
 
-    out = ScientistAgent(DummyLLM()).run(context)
-    assert out.scientific_analysis["hypothesis_matrix"]["tests_total"] == 4
+    llm = DummyLLM(json_response={"findings": [{"title": "A", "description": "d", "severity": "High", "confidence": 0.6, "evidence": "e"}]})
+    out = VulnAnalysisAgent(llm).run(context)
+
+    assert out.scientific_analysis["hypothesis_matrix"]["tests_total"] == 3
     assert out.scientific_analysis["false_positive_risk"] in {"low", "medium", "high"}
     assert all(0.0 <= f.confidence <= 1.0 for f in out.findings)

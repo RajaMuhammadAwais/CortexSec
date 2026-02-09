@@ -52,7 +52,6 @@ class SupervisorAgent(BaseAgent):
             ("Vulnerability Analysis", "VulnAnalysisAgent"),
             ("Attack-Graph Reasoning", "ReasoningAgent"),
             ("Exploitability Analysis", "ExploitabilityAgent"),
-            ("Scientific Validation", "ScientistAgent"),
             ("Risk Assessment", "RiskAgent"),
             ("Attack Simulation Planning", "AttackSimulationAgent"),
             ("Memory Update", "MemoryAgent"),
@@ -60,8 +59,8 @@ class SupervisorAgent(BaseAgent):
         if focus == "discovery":
             return base
         if focus == "validation":
-            return [base[2], base[3], base[4], base[5], base[6], base[7], base[9]]
-        return [base[4], base[5], base[6], base[7], base[9]]
+            return [base[2], base[3], base[4], base[5], base[6], base[8]]
+        return [base[4], base[5], base[6], base[8]]
 
     def _update_metrics(self, context: PentestContext, cycle: int, stable_cycles: int, prev_metrics: dict):
         findings = context.findings

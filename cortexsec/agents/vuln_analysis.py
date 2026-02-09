@@ -12,6 +12,30 @@ class VulnAnalysisAgent(BaseAgent):
     def _finding_key(self, finding: Finding) -> str:
         return f"{finding.title}|{finding.evidence}"
 
+
+    def _severity_weight(self, severity: str) -> float:
+        table = {"Critical": 1.0, "High": 0.8, "Medium": 0.6, "Low": 0.3}
+        return table.get(severity, 0.4)
+
+    def _build_hypothesis_matrix(self, payload_tests: list) -> dict:
+        total = len(payload_tests)
+        strong = len([p for p in payload_tests if p.get("status") == "needs-review"])
+        inconclusive = len([p for p in payload_tests if p.get("status") == "inconclusive"])
+        signal_ratio = round((strong / total), 3) if total else 0.0
+        return {
+            "tests_total": total,
+            "signals_strong": strong,
+            "signals_inconclusive": inconclusive,
+            "signal_ratio": signal_ratio,
+            "hypothesis": "Weak controls should produce reproducible behavior deltas under non-destructive payloads.",
+        }
+
+    def _calibrate_confidence(self, finding: Finding, signal_ratio: float) -> Finding:
+        prior = max(0.0, min(1.0, finding.confidence))
+        posterior = round(min(1.0, (0.7 * prior) + (0.3 * (signal_ratio * self._severity_weight(finding.severity) + 0.2))), 3)
+        finding.confidence = posterior
+        return finding
+
     def _payload_signal_to_finding(self, signal: dict) -> Finding:
         evidence = signal.get("evidence", {})
         payload_type = signal.get("payload_type", "unknown")
@@ -103,6 +127,15 @@ class VulnAnalysisAgent(BaseAgent):
             finding = self._payload_signal_to_finding(signal)
             dedupe[self._finding_key(finding)] = finding
 
-        context.findings = list(dedupe.values())
+        matrix = self._build_hypothesis_matrix(context.payload_tests)
+        signal_ratio = float(matrix.get("signal_ratio", 0.0))
+        context.findings = [self._calibrate_confidence(f, signal_ratio) for f in list(dedupe.values())]
+
+        context.scientific_analysis = {
+            "method": "Embedded scientific confidence calibration in VulnAnalysisAgent",
+            "hypothesis_matrix": matrix,
+            "false_positive_risk": "high" if signal_ratio < 0.1 else "medium" if signal_ratio < 0.3 else "low",
+        }
+
         self.log(f"Analysis complete. Total unique findings: {len(context.findings)}")
         return context
