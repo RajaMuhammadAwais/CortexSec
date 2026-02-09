@@ -37,7 +37,7 @@ setup(
         "rich",
         "openai",
         "anthropic",
-        "google-generativeai",
+        "google-genai",
         "pydantic",
         "python-dotenv",
         "requests",

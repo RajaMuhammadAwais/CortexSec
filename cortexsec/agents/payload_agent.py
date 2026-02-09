@@ -58,6 +58,51 @@ class PayloadAgent(BaseAgent):
             ),
         ]
 
+    def _llm_payloads(self, context: PentestContext) -> List[PayloadSpec]:
+        """Ask the LLM for safe, non-destructive payload ideas tied to recon context."""
+        recon_summary = {
+            "target": context.target,
+            "technologies": context.recon_data.get("analysis", {}).get("technologies", []),
+            "entry_points": context.attack_surface.get("entry_points", [])[:10],
+        }
+        prompt = (
+            "Generate 2 additional SAFE payloads for non-destructive web testing. "
+            "Only include canary, validation boundary, or logic check payloads. "
+            "Return strict JSON with: payloads: [{payload_type, value, goal, hypothesis}]. "
+            "Do not include exploit code, shell commands, or destructive actions. "
+            f"Context: {recon_summary}"
+        )
+
+        try:
+            raw = self.llm.generate_json(prompt)
+        except Exception:  # noqa: BLE001
+            return []
+
+        payloads: List[PayloadSpec] = []
+        for item in raw.get("payloads", [])[:2]:
+            if not isinstance(item, dict):
+                continue
+            value = str(item.get("value", "")).strip()
+            payload_type = str(item.get("payload_type", "canary")).strip() or "canary"
+            goal = str(item.get("goal", "LLM-generated safe test")).strip() or "LLM-generated safe test"
+            hypothesis = str(item.get("hypothesis", "Payload may trigger a measurable but safe behavior.")).strip()
+
+            if not value or len(value) > 300:
+                continue
+            if any(token in value.lower() for token in ["rm -", "drop table", "<script", "${jndi", "wget ", "curl "]):
+                continue
+
+            payloads.append(
+                PayloadSpec(
+                    payload_type=payload_type,
+                    value=value,
+                    goal=goal,
+                    hypothesis=hypothesis or "Payload may trigger a measurable but safe behavior.",
+                )
+            )
+
+        return payloads
+
     def _is_http_target(self, target: str) -> bool:
         parsed = urlparse(target)
         return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
@@ -215,9 +260,11 @@ class PayloadAgent(BaseAgent):
         results: List[Dict[str, Any]] = []
         vectors = ["query", "json", "form", "header-auth"]
 
+        payloads = self._payloads() + self._llm_payloads(context)
+
         for endpoint in self._entry_points(context):
             baseline = self._baseline(endpoint)
-            for payload in self._payloads():
+            for payload in payloads:
                 for vector in vectors:
                     results.append(self._run_vector(endpoint, payload, vector, baseline))
 
@@ -231,6 +278,7 @@ class PayloadAgent(BaseAgent):
                 "tests_run": len(results),
                 "signals": len(high_signal),
                 "weak_signals": len(weak_signal),
+                "payload_definitions": len(payloads),
                 "execution_mode": "real-world",
                 "design": "paired-control perturbation testing",
             }
