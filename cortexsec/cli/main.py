@@ -7,13 +7,18 @@ from cortexsec.core.planner import SupervisorAgent
 from cortexsec.agents.recon import ReconAgent
 from cortexsec.agents.attack_surface_agent import AttackSurfaceAgent
 from cortexsec.agents.web_app_scanner import WebAppScannerAgent
+from cortexsec.agents.browser_autonomous_agent import BrowserAutonomousAgent
 from cortexsec.agents.payload_agent import PayloadAgent
 from cortexsec.agents.vuln_analysis import VulnAnalysisAgent
+from cortexsec.agents.network_analyzer import NetworkAnalyzer
+from cortexsec.agents.autonomous_exploit_agent import AutonomousExploitationAgent
+from cortexsec.agents.zero_day_detector import ZeroDayDetector
 from cortexsec.agents.reasoning_agent import ReasoningAgent
 from cortexsec.agents.exploitability_agent import ExploitabilityAgent
 from cortexsec.agents.risk_agent import RiskAgent
 from cortexsec.agents.attack_simulation import AttackSimulationAgent
 from cortexsec.agents.memory_agent import MemoryAgent
+from cortexsec.agents.remediation_advisor import RemediationAdvisor
 from cortexsec.agents.report_agent import ReportAgent
 
 load_dotenv()
@@ -68,13 +73,18 @@ def start(
         ReconAgent(llm),
         AttackSurfaceAgent(llm),
         WebAppScannerAgent(llm),
+        BrowserAutonomousAgent(llm),
         PayloadAgent(llm),
         VulnAnalysisAgent(llm, refinement_rounds=vuln_refinement_rounds),
+        NetworkAnalyzer(llm),
+        AutonomousExploitationAgent(llm),
+        ZeroDayDetector(llm),
         ReasoningAgent(llm),
         ExploitabilityAgent(llm),
         RiskAgent(llm),
         AttackSimulationAgent(llm),
         MemoryAgent(llm),
+        RemediationAdvisor(llm),
         ReportAgent(llm),
     ]
 
