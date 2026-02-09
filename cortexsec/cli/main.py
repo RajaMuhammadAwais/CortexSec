@@ -6,6 +6,7 @@ from cortexsec.core.agent import PentestContext
 from cortexsec.core.planner import SupervisorAgent
 from cortexsec.agents.recon import ReconAgent
 from cortexsec.agents.attack_surface_agent import AttackSurfaceAgent
+from cortexsec.agents.web_app_scanner import WebAppScannerAgent
 from cortexsec.agents.payload_agent import PayloadAgent
 from cortexsec.agents.vuln_analysis import VulnAnalysisAgent
 from cortexsec.agents.reasoning_agent import ReasoningAgent
@@ -66,6 +67,7 @@ def start(
     agents = [
         ReconAgent(llm),
         AttackSurfaceAgent(llm),
+        WebAppScannerAgent(llm),
         PayloadAgent(llm),
         VulnAnalysisAgent(llm, refinement_rounds=vuln_refinement_rounds),
         ReasoningAgent(llm),
