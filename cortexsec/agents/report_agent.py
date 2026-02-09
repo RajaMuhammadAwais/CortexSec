@@ -48,6 +48,9 @@ class ReportAgent(BaseAgent):
         Exploitability Assessment:
         {context.exploitability_assessment}
 
+        Scientific Analysis:
+        {context.scientific_analysis}
+
         Safe Attack Simulation Playbooks:
         {context.attack_simulation}
 
@@ -77,9 +80,10 @@ class ReportAgent(BaseAgent):
         6) Real-World Exploitability and Business-Impact Evaluation (non-destructive only)
         7) Orchestrator Learning Summary (reward, strategy shifts, convergence)
         8) Pentest-Style Real-World Payload Analysis (hypothesis, observed behavior, risk, false-positive checks)
-        9) Prioritized Remediation Roadmap
-        10) Destructive-Mode Plan (if enabled): authorization prerequisites, rollback, blast-radius controls
-        11) Conclusion
+        9) Scientific Confidence Calibration (hypothesis quality, signal strength, false-positive risk)
+        10) Prioritized Remediation Roadmap
+        11) Destructive-Mode Plan (if enabled): authorization prerequisites, rollback, blast-radius controls
+        12) Conclusion
 
         Keep it explainable, concise, and professional markdown.
         """

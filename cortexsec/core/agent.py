@@ -41,6 +41,7 @@ class PentestContext(BaseModel):
     memory: Dict[str, Any] = Field(default_factory=dict)
     orchestrator_learning: Dict[str, Any] = Field(default_factory=dict)
     assessment_metrics: Dict[str, Any] = Field(default_factory=dict)
+    scientific_analysis: Dict[str, Any] = Field(default_factory=dict)
     stop_reason: str = ""
     history: List[Dict[str, Any]] = Field(default_factory=list)
     continuous_improvement: bool = False

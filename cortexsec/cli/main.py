@@ -10,6 +10,7 @@ from cortexsec.agents.payload_agent import PayloadAgent
 from cortexsec.agents.vuln_analysis import VulnAnalysisAgent
 from cortexsec.agents.reasoning_agent import ReasoningAgent
 from cortexsec.agents.exploitability_agent import ExploitabilityAgent
+from cortexsec.agents.scientist_agent import ScientistAgent
 from cortexsec.agents.risk_agent import RiskAgent
 from cortexsec.agents.attack_simulation import AttackSimulationAgent
 from cortexsec.agents.memory_agent import MemoryAgent
@@ -69,6 +70,7 @@ def start(
         VulnAnalysisAgent(llm, refinement_rounds=vuln_refinement_rounds),
         ReasoningAgent(llm),
         ExploitabilityAgent(llm),
+        ScientistAgent(llm),
         RiskAgent(llm),
         AttackSimulationAgent(llm),
         MemoryAgent(llm),
