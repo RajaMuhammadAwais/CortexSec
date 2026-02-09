@@ -3,6 +3,7 @@ from __future__ import annotations
 import shlex
 import subprocess
 import time
+import platform
 from datetime import datetime, timezone
 from typing import Dict, Any, List
 
@@ -94,6 +95,7 @@ class CommandExecutor:
                 text=True,
                 timeout=self.timeout_seconds,
                 check=False,
+                shell=platform.system() == "Windows",
             )
             duration = int((time.perf_counter() - started) * 1000)
             return ExecutorOutput(
