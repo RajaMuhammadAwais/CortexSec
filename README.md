@@ -108,16 +108,6 @@ All without destructive actions. Perfect for **security researchers**, **penetra
 - **Scientific Perturbation Logic**: Paired control-vs-payload experiments with reproducibility checks for lower false positives in real-world testing
 - **Authorization-First Validation**: Respects authorized scope boundaries
 
----
-
-
-## 🚀 Autonomy Implementation Plan
-
-We have started execution work using a dedicated, research-aligned implementation plan in:
-
-- `docs/research/autonomy-implementation-plan.md`
-
-This plan translates research into concrete project phases, acceptance criteria, and sprint backlog items for real autonomous capability delivery.
 
 ---
 
@@ -174,47 +164,6 @@ Reference standards:
 - Penetration Testing Execution Standard (PTES): http://www.pentest-standard.org/index.php/Main_Page
 - FIRST CVSS v3.1 Specification: https://www.first.org/cvss/v3-1/specification-document
 - MITRE ATT&CK Framework: https://attack.mitre.org/
-
-### 🚀 Research-Backed Upgrades to Make Agents More Autonomous
-
-If your goal is to make CortexSec agents significantly more powerful in real autonomous operations, prioritize these updates:
-
-1. **Planner → Executor → Critic Multi-Agent Loop**
-   - Add an explicit planning agent, execution agent, and critic/verifier agent with iterative self-correction before finalizing findings.
-   - Why: modern agent research shows better task reliability when actions are proposed, executed, and independently critiqued.
-
-2. **ReAct + Toolformer-Style Tool Calling**
-   - Standardize all agent reasoning into `Thought → Action → Observation` traces and train prompts/policies for when tools should be called.
-   - Why: improves grounded decisions, reduces hallucinated findings, and makes tool usage auditable.
-
-3. **Reflexion-Style Failure Memory**
-   - Persist "what failed + why" (payload families, false-positive patterns, dead-end exploit chains) and feed it into subsequent planning.
-   - Why: autonomous agents improve faster when they learn from prior mistakes, not only successes.
-
-4. **Policy-as-Code Safety Gates for Every Action**
-   - Add pre-action and post-action guardrails (scope check, non-destructive check, rate-limit check, sensitive-endpoint check) as enforceable policies.
-   - Why: keeps autonomy high while preserving legal/safety boundaries in continuous testing.
-
-5. **Evidence Graph Instead of Flat Logs**
-   - Convert command outputs into a graph: `target surface → test action → observation artifact → vulnerability hypothesis → confidence`.
-   - Why: enables reproducible exploitability decisions and improves report explainability.
-
-6. **Uncertainty-Aware Stopping Logic**
-   - Move from fixed loop exits to uncertainty-based stopping (stop when marginal confidence gain drops below threshold).
-   - Why: reduces wasted scans and improves focus on high-impact unresolved attack paths.
-
-7. **Continuous Evaluation Harness (Agent Benchmarks)**
-   - Add regression evaluation for autonomous behavior: precision/recall of findings, false-positive rate, reproducibility score, time-to-evidence.
-   - Why: autonomy quality degrades without benchmark-driven iteration.
-
-Suggested research references for these upgrades:
-- ReAct (reasoning + acting): https://arxiv.org/abs/2210.03629
-- Toolformer (self-supervised tool use): https://arxiv.org/abs/2302.04761
-- Reflexion (verbal reinforcement/self-improvement): https://arxiv.org/abs/2303.11366
-- NIST AI Risk Management Framework (governed AI operations): https://www.nist.gov/itl/ai-risk-management-framework
-- MITRE ATLAS (adversarial threats against AI-enabled systems): https://atlas.mitre.org/
-
----
 
 ## 🛠 Installation & Setup
 
