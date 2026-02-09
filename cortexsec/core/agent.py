@@ -37,12 +37,16 @@ class PentestContext(BaseModel):
     risk_summary: Dict[str, Any] = Field(default_factory=dict)
     exploitability_assessment: Dict[str, Any] = Field(default_factory=dict)
     attack_simulation: List[Dict[str, Any]] = Field(default_factory=list)
+    payload_tests: List[Dict[str, Any]] = Field(default_factory=list)
     memory: Dict[str, Any] = Field(default_factory=dict)
     orchestrator_learning: Dict[str, Any] = Field(default_factory=dict)
     assessment_metrics: Dict[str, Any] = Field(default_factory=dict)
+    scientific_analysis: Dict[str, Any] = Field(default_factory=dict)
     stop_reason: str = ""
     history: List[Dict[str, Any]] = Field(default_factory=list)
     continuous_improvement: bool = False
+    pro_user: bool = False
+    destructive_mode: bool = False
 
 
 class BaseAgent:

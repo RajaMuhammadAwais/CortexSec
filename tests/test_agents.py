@@ -7,6 +7,7 @@ from cortexsec.agents.attack_simulation import AttackSimulationAgent
 from cortexsec.agents.attack_surface_agent import AttackSurfaceAgent
 from cortexsec.agents.exploitability_agent import ExploitabilityAgent
 from cortexsec.agents.memory_agent import MemoryAgent
+from cortexsec.agents.payload_agent import PayloadAgent
 from cortexsec.agents.reasoning_agent import ReasoningAgent
 from cortexsec.agents.recon import ReconAgent
 from cortexsec.agents.report_agent import ReportAgent
@@ -177,6 +178,7 @@ def test_supervisor_retries_failed_agent_and_records_recovery():
     agents = [
         FlakyAgent("ReconAgent", fail_times=1),
         StaticAgent("AttackSurfaceAgent"),
+        StaticAgent("PayloadAgent"),
         StaticAgent("VulnAnalysisAgent"),
         StaticAgent("ReasoningAgent"),
         StaticAgent("ExploitabilityAgent"),
@@ -191,3 +193,244 @@ def test_supervisor_retries_failed_agent_and_records_recovery():
     recovery = [e for e in out.memory.get("agent_recovery_log", []) if e.get("status") == "recovered"]
     assert recovery and recovery[0]["agent"] == "ReconAgent"
     assert out.stop_reason
+
+
+def test_payload_agent_generates_safe_payload_results(monkeypatch):
+    context = base_context()
+    context.attack_surface = {"entry_points": ["/api/test"]}
+
+    class FakeResponse:
+        def __init__(self, text, status_code=200):
+            self.text = text
+            self.status_code = status_code
+
+    def fake_get(*_args, **_kwargs):
+        if "params" in _kwargs and _kwargs["params"].get("q") == "CORTEX_CANARY_03_f4ad":
+            return FakeResponse("baseline CORTEX_CANARY_03_f4ad")
+        return FakeResponse("baseline")
+
+    def fake_post(*_args, **_kwargs):
+        return FakeResponse("baseline")
+
+    monkeypatch.setattr("requests.get", fake_get)
+    monkeypatch.setattr("requests.post", fake_post)
+
+    out = PayloadAgent(DummyLLM()).run(context)
+    # 2 endpoints (target + discovered) * 5 payloads * 4 vectors
+    assert len(out.payload_tests) == 40
+    assert any(p["status"] in {"needs-review", "weak-signal"} for p in out.payload_tests)
+    assert all("perturbation_score" in p.get("evidence", {}) for p in out.payload_tests)
+    assert all(p["request_mode"] in {"query", "json", "form", "header-auth"} for p in out.payload_tests)
+
+
+def test_vuln_analysis_ingests_payload_signals():
+    context = base_context()
+    context.recon_data = {"raw": {"headers": {"Server": "nginx"}}, "analysis": {}}
+    context.payload_tests = [
+        {
+            "payload_type": "logic-test",
+            "status": "needs-review",
+            "goal": "Authorization boundary checks",
+            "evidence": {"status_changed": True},
+        }
+    ]
+
+    out = VulnAnalysisAgent(DummyLLM(json_response={"findings": []})).run(context)
+    assert any(f.title.startswith("Payload-Test Signal") for f in out.findings)
+
+
+def test_payload_agent_destructive_mode_is_plan_only(monkeypatch):
+    context = PentestContext(target="https://example.com", mode="authorized", pro_user=True, destructive_mode=True)
+
+    class FakeResponse:
+        def __init__(self, text, status_code=200):
+            self.text = text
+            self.status_code = status_code
+
+    monkeypatch.setattr("requests.get", lambda *_a, **_k: FakeResponse("ok"))
+    monkeypatch.setattr("requests.post", lambda *_a, **_k: FakeResponse("ok"))
+
+    out = PayloadAgent(DummyLLM()).run(context)
+    assert any("execution blocked" in h.get("message", "") for h in out.history)
+
+
+def test_attack_simulation_includes_destructive_plan_when_enabled():
+    context = PentestContext(target="https://example.com", mode="authorized", pro_user=True, destructive_mode=True)
+    context.findings = [Finding(title="A", description="d", severity="Low", confidence=0.5, evidence="e")]
+    out = AttackSimulationAgent(DummyLLM()).run(context)
+    assert out.attack_simulation[0]["destructive_mode"] is True
+    assert out.attack_simulation[0]["destructive_plan"]
+
+
+def test_cli_destructive_requires_pro_user():
+    from typer.testing import CliRunner
+    from cortexsec.cli.main import app
+
+    runner = CliRunner()
+    result = runner.invoke(app, [
+        "--target", "http://localhost:8080", "--mode", "lab", "--destructive-mode"
+    ])
+    assert result.exit_code == 1
+    assert "requires --pro-user" in result.stdout
+
+
+def test_vuln_analysis_embeds_scientific_logic():
+    context = base_context()
+    context.recon_data = {"raw": {"headers": {"Server": "nginx"}}, "analysis": {}}
+    context.payload_tests = [
+        {"status": "needs-review"},
+        {"status": "inconclusive"},
+        {"status": "no-strong-signal"},
+    ]
+
+    llm = DummyLLM(json_response={"findings": [{"title": "A", "description": "d", "severity": "High", "confidence": 0.6, "evidence": "e"}]})
+    out = VulnAnalysisAgent(llm).run(context)
+
+    assert out.scientific_analysis["hypothesis_matrix"]["tests_total"] == 3
+    assert out.scientific_analysis["false_positive_risk"] in {"low", "medium", "high"}
+    assert all(0.0 <= f.confidence <= 1.0 for f in out.findings)
+
+
+def test_payload_agent_control_suppresses_false_positive_signal(monkeypatch):
+    context = base_context()
+
+    class FakeResponse:
+        def __init__(self, text, status_code=200):
+            self.text = text
+            self.status_code = status_code
+
+    agent = PayloadAgent(DummyLLM())
+
+    def fake_execute(_url, _vector, value):
+        # payload and control behave similarly (no payload-specific perturbation)
+        if value == "CORTEX_CTRL_NEUTRAL":
+            return FakeResponse("forbidden", status_code=403)
+        return FakeResponse("forbidden", status_code=403)
+
+    monkeypatch.setattr(agent, "_execute_vector", fake_execute)
+
+    out = agent._run_vector(
+        "https://example.com",
+        payload=agent._payloads()[0],
+        vector="query",
+        baseline={"status_code": 200, "body_length": 8},
+    )
+
+    assert out["status"] in {"no-strong-signal", "weak-signal"}
+    assert out["evidence"]["control_authorization_signal"] is True
+
+
+def test_payload_agent_marks_reproducible_when_replay_matches(monkeypatch):
+    class FakeResponse:
+        def __init__(self, text, status_code=200):
+            self.text = text
+            self.status_code = status_code
+
+    agent = PayloadAgent(DummyLLM())
+    payload = agent._payloads()[0]
+
+    calls = {"n": 0}
+
+    def fake_execute(_url, _vector, value):
+        if value == "CORTEX_CTRL_NEUTRAL":
+            return FakeResponse("baseline", 200)
+        calls["n"] += 1
+        # payload + replay return same behavior
+        return FakeResponse(f"baseline {payload.value}", 500)
+
+    monkeypatch.setattr(agent, "_execute_vector", fake_execute)
+
+    out = agent._run_vector(
+        "https://example.com",
+        payload=payload,
+        vector="query",
+        baseline={"status_code": 200, "body_length": 8},
+    )
+
+    assert out["status"] == "needs-review"
+    assert out["evidence"]["reproducible"] is True
+
+
+def test_supervisor_complete_flow_positive(monkeypatch, tmp_path):
+    class FakeResponse:
+        def __init__(self, text="ok", status_code=200, headers=None):
+            self.text = text
+            self.status_code = status_code
+            self.headers = headers or {"Server": "nginx", "X-Powered-By": "python"}
+
+    def fake_get(url, *args, **kwargs):
+        params = kwargs.get("params") or {}
+        headers = kwargs.get("headers") or {}
+        q = params.get("q", "")
+
+        body = "baseline"
+        code = 200
+        if "CORTEX_CANARY_03_f4ad" in q or "CORTEX_CANARY_03_f4ad" in headers.get("X-Pentest-Input", ""):
+            body = "baseline CORTEX_CANARY_03_f4ad"
+            code = 500
+        return FakeResponse(text=body, status_code=code)
+
+    def fake_post(_url, *args, **kwargs):
+        payload = (kwargs.get("json") or {}).get("input") or (kwargs.get("data") or {}).get("input") or ""
+        if payload == "CORTEX_CANARY_03_f4ad":
+            return FakeResponse(text="baseline CORTEX_CANARY_03_f4ad", status_code=500)
+        return FakeResponse(text="baseline", status_code=200)
+
+    monkeypatch.setattr("requests.get", fake_get)
+    monkeypatch.setattr("requests.post", fake_post)
+    monkeypatch.chdir(tmp_path)
+
+    llm = DummyLLM(text_response="# Report", json_response={"findings": []})
+    agents = [
+        ReconAgent(llm),
+        AttackSurfaceAgent(llm),
+        PayloadAgent(llm),
+        VulnAnalysisAgent(llm),
+        ReasoningAgent(llm),
+        ExploitabilityAgent(llm),
+        RiskAgent(llm),
+        AttackSimulationAgent(llm),
+        MemoryAgent(llm),
+        ReportAgent(llm),
+    ]
+
+    supervisor = SupervisorAgent(llm, agents, max_cycles=1, retry_failed_agents=0)
+    out = supervisor.run(PentestContext(target="https://example.com", mode="authorized"))
+
+    assert out.stop_reason
+    assert out.payload_tests
+    assert out.findings
+    assert out.risk_summary.get("level") in {"Low", "Medium", "High", "Critical"}
+    assert (tmp_path / "reports" / "pentest_report.md").exists()
+
+
+def test_supervisor_complete_flow_negative_network_failures(monkeypatch, tmp_path):
+    def fail_request(*_args, **_kwargs):
+        raise OSError("network down")
+
+    monkeypatch.setattr("requests.get", fail_request)
+    monkeypatch.setattr("requests.post", fail_request)
+    monkeypatch.chdir(tmp_path)
+
+    llm = DummyLLM(text_response="# Report", json_response={"findings": []})
+    agents = [
+        ReconAgent(llm),
+        AttackSurfaceAgent(llm),
+        PayloadAgent(llm),
+        VulnAnalysisAgent(llm),
+        ReasoningAgent(llm),
+        ExploitabilityAgent(llm),
+        RiskAgent(llm),
+        AttackSimulationAgent(llm),
+        MemoryAgent(llm),
+        ReportAgent(llm),
+    ]
+
+    supervisor = SupervisorAgent(llm, agents, max_cycles=1, retry_failed_agents=0)
+    out = supervisor.run(PentestContext(target="https://example.com", mode="authorized"))
+
+    assert out.stop_reason
+    assert out.recon_data.get("raw", {}).get("error")
+    assert out.payload_tests
+    assert any(t.get("status") == "inconclusive" for t in out.payload_tests)
+    assert (tmp_path / "reports" / "pentest_report.md").exists()
