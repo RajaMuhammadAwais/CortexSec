@@ -37,6 +37,7 @@ def start(
     max_auto_extensions: int = typer.Option(2, "--max-auto-extensions", help="Maximum extra cycles when continuous improvement is enabled"),
     retry_failed_agents: int = typer.Option(1, "--retry-failed-agents", help="Retries per agent when a cycle step fails"),
     vuln_refinement_rounds: int = typer.Option(2, "--vuln-refinement-rounds", help="Extra research-style refinement rounds in vulnerability analysis"),
+    live_attack_graph: bool = typer.Option(False, "--live-attack-graph", help="Render live attack-graph progress per cycle"),
     pro_user: bool = typer.Option(False, "--pro-user", help="Enable pro workflow features"),
     destructive_mode: bool = typer.Option(False, "--destructive-mode", help="Pro-only: generate destructive test plans (execution is blocked by safety policy)"),
 ):
@@ -86,6 +87,7 @@ def start(
         min_stable_cycles=min_stable_cycles,
         max_auto_extensions=max_auto_extensions,
         retry_failed_agents=retry_failed_agents,
+        live_attack_graph=live_attack_graph,
     )
 
     context = PentestContext(

@@ -30,9 +30,10 @@ class DummyLLM:
 
 
 class DummyResponse:
-    def __init__(self, headers=None, status_code=200):
+    def __init__(self, headers=None, status_code=200, text=""):
         self.headers = headers or {}
         self.status_code = status_code
+        self.text = text
 
 
 class StaticAgent(BaseAgent):
@@ -69,6 +70,8 @@ def test_recon_agent_positive_and_negative(monkeypatch):
     monkeypatch.setattr("requests.get", lambda *_args, **_kwargs: DummyResponse(headers={"Server": "nginx"}))
     out = agent.run(context)
     assert out.recon_data["raw"]["server"] == "nginx"
+    assert "crawled_urls" in out.recon_data["raw"]
+    assert "directory_hits" in out.recon_data["raw"]
     assert "real-world authorized penetration testing practices" in llm.last_system_prompt
     assert "use terminal commands when required" in llm.last_system_prompt
     assert "multi-step investigative workflows autonomously" in llm.last_system_prompt
@@ -249,6 +252,32 @@ def test_vuln_analysis_ingests_payload_signals():
     out = VulnAnalysisAgent(DummyLLM(json_response={"findings": []})).run(context)
     assert any(f.title.startswith("Payload-Test Signal") for f in out.findings)
 
+
+
+
+def test_payload_agent_includes_llm_generated_payloads(monkeypatch):
+    context = base_context()
+
+    class FakeResponse:
+        def __init__(self, text, status_code=200):
+            self.text = text
+            self.status_code = status_code
+
+    llm = DummyLLM(json_response={
+        "payloads": [
+            {"payload_type": "canary", "value": "CORTEX_DYNAMIC_SAFE", "goal": "trace", "hypothesis": "reflect"},
+            {"payload_type": "logic-test", "value": "role=user", "goal": "auth", "hypothesis": "boundary"},
+        ]
+    })
+
+    monkeypatch.setattr("requests.get", lambda *_a, **_k: FakeResponse("ok"))
+    monkeypatch.setattr("requests.post", lambda *_a, **_k: FakeResponse("ok"))
+
+    out = PayloadAgent(llm).run(context)
+    payload_values = {entry["payload"] for entry in out.payload_tests}
+
+    assert "CORTEX_DYNAMIC_SAFE" in payload_values
+    assert "role=user" in payload_values
 
 def test_payload_agent_destructive_mode_is_plan_only(monkeypatch):
     context = PentestContext(target="https://example.com", mode="authorized", pro_user=True, destructive_mode=True)

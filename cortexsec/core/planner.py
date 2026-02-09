@@ -2,6 +2,7 @@ from typing import List
 from cortexsec.core.agent import BaseAgent, PentestContext
 from cortexsec.llm.base import BaseLLM
 from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.console import Console
 
 
 class SupervisorAgent(BaseAgent):
@@ -19,6 +20,7 @@ class SupervisorAgent(BaseAgent):
         min_stable_cycles: int = 1,
         max_auto_extensions: int = 2,
         retry_failed_agents: int = 1,
+        live_attack_graph: bool = False,
     ):
         super().__init__("Supervisor", llm)
         self.agents = {agent.name: agent for agent in agents}
@@ -30,6 +32,8 @@ class SupervisorAgent(BaseAgent):
         self.min_stable_cycles = min_stable_cycles
         self.max_auto_extensions = max(0, max_auto_extensions)
         self.retry_failed_agents = max(0, retry_failed_agents)
+        self.live_attack_graph = live_attack_graph
+        self.console = Console()
 
     def _ensure_learning_state(self, context: PentestContext):
         if not context.orchestrator_learning:
@@ -190,6 +194,13 @@ class SupervisorAgent(BaseAgent):
                 self._update_learning(context, focus)
                 prev_metrics = dict(context.assessment_metrics)
                 m = context.assessment_metrics
+
+                if self.live_attack_graph:
+                    self.console.print(
+                        f"[bold cyan]Attack Graph[/bold cyan] | cycle={cycle} "
+                        f"confirmed_paths={m['confirmed_paths']} "
+                        f"causal_completeness={m['causal_completeness']}"
+                    )
 
                 converged = (
                     m["avg_confidence"] >= self.confidence_threshold
