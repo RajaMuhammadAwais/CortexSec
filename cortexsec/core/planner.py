@@ -52,19 +52,25 @@ class SupervisorAgent(BaseAgent):
         base = [
             ("Reconnaissance", "ReconAgent"),
             ("Attack Surface Modeling", "AttackSurfaceAgent"),
+            ("Web Application Scanning", "WebAppScannerAgent"),
+            ("Browser-Based Testing", "BrowserAutonomousAgent"),
             ("Payload Injection Testing", "PayloadAgent"),
             ("Vulnerability Analysis", "VulnAnalysisAgent"),
+            ("Network Traffic Analysis", "NetworkAnalyzer"),
+            ("Autonomous Exploitation", "AutonomousExploitationAgent"),
+            ("Zero-Day Detection", "ZeroDayDetector"),
             ("Attack-Graph Reasoning", "ReasoningAgent"),
             ("Exploitability Analysis", "ExploitabilityAgent"),
             ("Risk Assessment", "RiskAgent"),
             ("Attack Simulation Planning", "AttackSimulationAgent"),
             ("Memory Update", "MemoryAgent"),
+            ("Remediation Planning", "RemediationAdvisor"),
         ]
         if focus == "discovery":
             return base
         if focus == "validation":
-            return [base[2], base[3], base[4], base[5], base[6], base[8]]
-        return [base[4], base[5], base[6], base[8]]
+            return [base[4], base[5], base[6], base[7], base[8], base[9], base[10], base[11], base[13], base[15]]
+        return [base[7], base[8], base[9], base[10], base[11], base[13], base[15]]
 
     def _update_metrics(self, context: PentestContext, cycle: int, stable_cycles: int, prev_metrics: dict):
         findings = context.findings
