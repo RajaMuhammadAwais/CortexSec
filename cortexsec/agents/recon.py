@@ -1,6 +1,6 @@
 from cortexsec.core.agent import BaseAgent, PentestContext
 import requests
-from typing import Dict, Any
+from cortexsec.agents.real_world_guidance import real_world_prompt
 
 class ReconAgent(BaseAgent):
     """
@@ -33,7 +33,10 @@ class ReconAgent(BaseAgent):
         Return the analysis in JSON format with keys: 'technologies', 'potential_issues', 'next_steps'.
         """
         
-        llm_analysis = self.llm.generate_json(analysis_prompt, system_prompt="You are a reconnaissance expert.")
+        llm_analysis = self.llm.generate_json(
+            analysis_prompt,
+            system_prompt=real_world_prompt("reconnaissance expert"),
+        )
         context.recon_data = {
             "raw": recon_results,
             "analysis": llm_analysis

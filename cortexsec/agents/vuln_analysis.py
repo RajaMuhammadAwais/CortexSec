@@ -1,5 +1,6 @@
 from cortexsec.core.agent import BaseAgent, PentestContext, Finding
 from cortexsec.utils.http_security import run_http_security_quick_checks
+from cortexsec.agents.real_world_guidance import real_world_prompt
 
 
 class VulnAnalysisAgent(BaseAgent):
@@ -34,7 +35,10 @@ class VulnAnalysisAgent(BaseAgent):
         Return strict JSON: {{"findings": [ ... ]}}
         """
 
-        results = self.llm.generate_json(analysis_prompt, system_prompt="You are a senior vulnerability researcher.")
+        results = self.llm.generate_json(
+            analysis_prompt,
+            system_prompt=real_world_prompt("senior vulnerability researcher"),
+        )
         llm_findings = results.get("findings", []) if isinstance(results, dict) else []
 
         dedupe = {self._finding_key(f): f for f in context.findings}
