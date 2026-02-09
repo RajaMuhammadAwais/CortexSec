@@ -289,3 +289,63 @@ def test_vuln_analysis_embeds_scientific_logic():
     assert out.scientific_analysis["hypothesis_matrix"]["tests_total"] == 3
     assert out.scientific_analysis["false_positive_risk"] in {"low", "medium", "high"}
     assert all(0.0 <= f.confidence <= 1.0 for f in out.findings)
+
+
+def test_payload_agent_control_suppresses_false_positive_signal(monkeypatch):
+    context = base_context()
+
+    class FakeResponse:
+        def __init__(self, text, status_code=200):
+            self.text = text
+            self.status_code = status_code
+
+    agent = PayloadAgent(DummyLLM())
+
+    def fake_execute(_url, _vector, value):
+        # payload and control behave similarly (no payload-specific perturbation)
+        if value == "CORTEX_CTRL_NEUTRAL":
+            return FakeResponse("forbidden", status_code=403)
+        return FakeResponse("forbidden", status_code=403)
+
+    monkeypatch.setattr(agent, "_execute_vector", fake_execute)
+
+    out = agent._run_vector(
+        "https://example.com",
+        payload=agent._payloads()[0],
+        vector="query",
+        baseline={"status_code": 200, "body_length": 8},
+    )
+
+    assert out["status"] in {"no-strong-signal", "weak-signal"}
+    assert out["evidence"]["control_authorization_signal"] is True
+
+
+def test_payload_agent_marks_reproducible_when_replay_matches(monkeypatch):
+    class FakeResponse:
+        def __init__(self, text, status_code=200):
+            self.text = text
+            self.status_code = status_code
+
+    agent = PayloadAgent(DummyLLM())
+    payload = agent._payloads()[0]
+
+    calls = {"n": 0}
+
+    def fake_execute(_url, _vector, value):
+        if value == "CORTEX_CTRL_NEUTRAL":
+            return FakeResponse("baseline", 200)
+        calls["n"] += 1
+        # payload + replay return same behavior
+        return FakeResponse(f"baseline {payload.value}", 500)
+
+    monkeypatch.setattr(agent, "_execute_vector", fake_execute)
+
+    out = agent._run_vector(
+        "https://example.com",
+        payload=payload,
+        vector="query",
+        baseline={"status_code": 200, "body_length": 8},
+    )
+
+    assert out["status"] == "needs-review"
+    assert out["evidence"]["reproducible"] is True

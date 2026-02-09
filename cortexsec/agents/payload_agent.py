@@ -131,19 +131,31 @@ class PayloadAgent(BaseAgent):
 
             control_status_changed = baseline.get("status_code") is not None and baseline.get("status_code") != control_response.status_code
             control_length_changed = abs(len(control_body) - int(baseline.get("body_length", 0))) > 200
+            control_auth_signal = control_response.status_code in {401, 403} or any(
+                token in control_body.lower() for token in ["forbidden", "unauthorized", "permission", "access denied"]
+            )
 
             perturbation_score = 0
             perturbation_score += 1 if status_changed and not control_status_changed else 0
             perturbation_score += 1 if length_changed and not control_length_changed else 0
             perturbation_score += 1 if canary_reflected else 0
-            perturbation_score += 1 if auth_signal and not control_status_changed else 0
+            perturbation_score += 1 if auth_signal and not control_auth_signal else 0
 
             reproducible: Optional[bool] = None
             if perturbation_score >= 2:
                 replay_response = self._execute_vector(url, vector, payload.value)
                 replay_body = replay_response.text or ""
                 replay_length_changed = abs(len(replay_body) - int(baseline.get("body_length", 0))) > 200
-                reproducible = replay_response.status_code == payload_response.status_code and replay_length_changed == length_changed
+                replay_canary = payload.value in replay_body
+                replay_auth_signal = replay_response.status_code in {401, 403} or any(
+                    token in replay_body.lower() for token in ["forbidden", "unauthorized", "permission", "access denied"]
+                )
+                reproducible = (
+                    replay_response.status_code == payload_response.status_code
+                    and replay_length_changed == length_changed
+                    and replay_canary == canary_reflected
+                    and replay_auth_signal == auth_signal
+                )
 
             result["observed"] = "response-received"
             result["evidence"] = {
@@ -157,6 +169,7 @@ class PayloadAgent(BaseAgent):
                 "length_changed": length_changed,
                 "control_status_changed": control_status_changed,
                 "control_length_changed": control_length_changed,
+                "control_authorization_signal": control_auth_signal,
                 "canary_reflected": canary_reflected,
                 "authorization_signal": auth_signal,
                 "perturbation_score": perturbation_score,
