@@ -349,3 +349,88 @@ def test_payload_agent_marks_reproducible_when_replay_matches(monkeypatch):
 
     assert out["status"] == "needs-review"
     assert out["evidence"]["reproducible"] is True
+
+
+def test_supervisor_complete_flow_positive(monkeypatch, tmp_path):
+    class FakeResponse:
+        def __init__(self, text="ok", status_code=200, headers=None):
+            self.text = text
+            self.status_code = status_code
+            self.headers = headers or {"Server": "nginx", "X-Powered-By": "python"}
+
+    def fake_get(url, *args, **kwargs):
+        params = kwargs.get("params") or {}
+        headers = kwargs.get("headers") or {}
+        q = params.get("q", "")
+
+        body = "baseline"
+        code = 200
+        if "CORTEX_CANARY_03_f4ad" in q or "CORTEX_CANARY_03_f4ad" in headers.get("X-Pentest-Input", ""):
+            body = "baseline CORTEX_CANARY_03_f4ad"
+            code = 500
+        return FakeResponse(text=body, status_code=code)
+
+    def fake_post(_url, *args, **kwargs):
+        payload = (kwargs.get("json") or {}).get("input") or (kwargs.get("data") or {}).get("input") or ""
+        if payload == "CORTEX_CANARY_03_f4ad":
+            return FakeResponse(text="baseline CORTEX_CANARY_03_f4ad", status_code=500)
+        return FakeResponse(text="baseline", status_code=200)
+
+    monkeypatch.setattr("requests.get", fake_get)
+    monkeypatch.setattr("requests.post", fake_post)
+    monkeypatch.chdir(tmp_path)
+
+    llm = DummyLLM(text_response="# Report", json_response={"findings": []})
+    agents = [
+        ReconAgent(llm),
+        AttackSurfaceAgent(llm),
+        PayloadAgent(llm),
+        VulnAnalysisAgent(llm),
+        ReasoningAgent(llm),
+        ExploitabilityAgent(llm),
+        RiskAgent(llm),
+        AttackSimulationAgent(llm),
+        MemoryAgent(llm),
+        ReportAgent(llm),
+    ]
+
+    supervisor = SupervisorAgent(llm, agents, max_cycles=1, retry_failed_agents=0)
+    out = supervisor.run(PentestContext(target="https://example.com", mode="authorized"))
+
+    assert out.stop_reason
+    assert out.payload_tests
+    assert out.findings
+    assert out.risk_summary.get("level") in {"Low", "Medium", "High", "Critical"}
+    assert (tmp_path / "reports" / "pentest_report.md").exists()
+
+
+def test_supervisor_complete_flow_negative_network_failures(monkeypatch, tmp_path):
+    def fail_request(*_args, **_kwargs):
+        raise OSError("network down")
+
+    monkeypatch.setattr("requests.get", fail_request)
+    monkeypatch.setattr("requests.post", fail_request)
+    monkeypatch.chdir(tmp_path)
+
+    llm = DummyLLM(text_response="# Report", json_response={"findings": []})
+    agents = [
+        ReconAgent(llm),
+        AttackSurfaceAgent(llm),
+        PayloadAgent(llm),
+        VulnAnalysisAgent(llm),
+        ReasoningAgent(llm),
+        ExploitabilityAgent(llm),
+        RiskAgent(llm),
+        AttackSimulationAgent(llm),
+        MemoryAgent(llm),
+        ReportAgent(llm),
+    ]
+
+    supervisor = SupervisorAgent(llm, agents, max_cycles=1, retry_failed_agents=0)
+    out = supervisor.run(PentestContext(target="https://example.com", mode="authorized"))
+
+    assert out.stop_reason
+    assert out.recon_data.get("raw", {}).get("error")
+    assert out.payload_tests
+    assert any(t.get("status") == "inconclusive" for t in out.payload_tests)
+    assert (tmp_path / "reports" / "pentest_report.md").exists()
