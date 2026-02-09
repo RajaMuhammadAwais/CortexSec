@@ -24,7 +24,7 @@ app = typer.Typer(name="cortexsec", help="CortexSec - Autonomous AI Security Ass
 def start(
     target: str = typer.Option(..., "--target", "-t", help="Target URL or IP"),
     mode: str = typer.Option("lab", "--mode", "-m", help="Assessment mode (lab/authorized)"),
-    provider: str = typer.Option("openai", "--provider", help="LLM provider: openai/claude/gemini"),
+    provider: str = typer.Option("openai", "--provider", help="LLM provider: openai/claude/gemini/deepseek"),
     model: str = typer.Option("", "--model", help="LLM model name (optional)"),
     api_key: str = typer.Option(None, "--api-key", help="LLM API Key"),
     max_cycles: int = typer.Option(5, "--max-cycles", help="Maximum autonomous reasoning cycles"),

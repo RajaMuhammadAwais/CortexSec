@@ -80,7 +80,7 @@ All without destructive actions. Perfect for **security researchers**, **penetra
 - **Multi-Agent Autonomous Architecture**: Specialized agents for reconnaissance, vulnerability discovery, exploitability analysis, and reporting
 - **Closed-Loop Intelligent Orchestrator**: Continuously plans, reasons, and coordinates agents for comprehensive vulnerability assessment
 - **Policy-Bounded Autonomy**: Enforces non-destructive penetration testing and authorized-target-only security assessment
-- **LLM-Agnostic Support**: Works with OpenAI, Anthropic Claude, and Google Gemini via extensible architecture
+- **LLM-Agnostic Support**: Works with OpenAI, Anthropic Claude, Google Gemini, and DeepSeek R1 via extensible architecture
 - **Terminal & Tool-Assisted Reasoning**: Agents can execute approved terminal workflows and security tools, preserve command/output provenance, and apply evidence-driven logic to validate exploitability and vulnerability confidence
 
 ### Security Assessment & Analysis
@@ -222,7 +222,7 @@ Get **CortexSec** running in minutes. Choose your installation method based on y
 
 ### Prerequisites
 - **Python 3.8+** (3.10+ recommended)
-- **LLM API Key** (OpenAI GPT, Anthropic Claude, or Google Gemini)
+- **LLM API Key** (OpenAI GPT, Anthropic Claude, Google Gemini, or DeepSeek)
 - **Git** for repository cloning
 - **pip** for Python package management
 
@@ -251,6 +251,7 @@ Get **CortexSec** running in minutes. Choose your installation method based on y
    OPENAI_API_KEY=your_openai_api_key
    # Optional: ANTHROPIC_API_KEY=your_claude_api_key
    # Optional: GOOGLE_API_KEY=your_gemini_api_key
+   # Optional: DEEPSEEK_API_KEY=your_deepseek_api_key
    ```
 
 ### Linux Installation Guide (Ubuntu, Debian, Fedora, Arch Linux)
@@ -298,12 +299,13 @@ pip install -e .
 ```
 
 #### Step 5: Configure LLM API Keys
-Set up your OpenAI, Anthropic, or Google credentials
+Set up your OpenAI, Anthropic, Google, or DeepSeek credentials
 ```bash
 cat > .env << 'EOF'
 OPENAI_API_KEY=your_openai_api_key
 # Optional: ANTHROPIC_API_KEY=your_claude_api_key
 # Optional: GOOGLE_API_KEY=your_gemini_api_key
+# Optional: DEEPSEEK_API_KEY=your_deepseek_api_key
 EOF
 ```
 
@@ -371,7 +373,7 @@ cortexsec start --target https://example.com --mode authorized --provider openai
 
 **Assessment Parameters:**
 - `--target`: URL of the target application
-- `--provider`: LLM provider (openai, claude, gemini)
+- `--provider`: LLM provider (openai, claude, gemini, deepseek)
 - `--max-cycles`: Maximum assessment iterations
 - `--confidence-threshold`: Minimum confidence level for findings (0-1)
 - `--coverage-threshold`: Minimum vulnerability coverage (0-1)
