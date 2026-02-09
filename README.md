@@ -1,6 +1,6 @@
 # 🧠 CortexSec - AI Autonomous Pentesting Agent
 
-![CortexSec 2D Logo](docs/assets/cortexsec-logo.svg)
+![CortexSec 2D Logo](docs/assets/cortexsec-logo.png)
 
 <!-- Project Description -->
 <!-- 
