@@ -46,6 +46,7 @@ All without destructive actions. Perfect for **security researchers**, **penetra
 
 ## 📋 Table of Contents
 
+- [Autonomy Implementation Plan](#-autonomy-implementation-plan)
 - [What is CortexSec?](#what-is-cortexsec)
 - [Why Choose CortexSec?](#why-choose-cortexsec)
 - [Features](#-features)
@@ -80,6 +81,7 @@ All without destructive actions. Perfect for **security researchers**, **penetra
 - **Closed-Loop Intelligent Orchestrator**: Continuously plans, reasons, and coordinates agents for comprehensive vulnerability assessment
 - **Policy-Bounded Autonomy**: Enforces non-destructive penetration testing and authorized-target-only security assessment
 - **LLM-Agnostic Support**: Works with OpenAI, Anthropic Claude, and Google Gemini via extensible architecture
+- **Terminal & Tool-Assisted Reasoning**: Agents can execute approved terminal workflows and security tools, preserve command/output provenance, and apply evidence-driven logic to validate exploitability and vulnerability confidence
 
 ### Security Assessment & Analysis
 - **Comprehensive Attack Surface Modeling**: Identifies and maps your application's security weaknesses
@@ -108,6 +110,17 @@ All without destructive actions. Perfect for **security researchers**, **penetra
 
 ---
 
+
+## 🚀 Autonomy Implementation Plan
+
+We have started execution work using a dedicated, research-aligned implementation plan in:
+
+- `docs/research/autonomy-implementation-plan.md`
+
+This plan translates research into concrete project phases, acceptance criteria, and sprint backlog items for real autonomous capability delivery.
+
+---
+
 ## 🏗 How CortexSec Works - Architecture & Execution
 
 ### Multi-Agent System Components
@@ -128,6 +141,7 @@ CortexSec employs a sophisticated distributed multi-agent framework:
 ┌─ Start Assessment (Authorized Target)
 ├─ Reconnaissance Phase → Identify entry points & services
 ├─ Vulnerability Discovery → Scan for OWASP weaknesses
+├─ Terminal/Tool Verification → Execute safe checks and collect evidence
 ├─ Exploitability Analysis → Assess attack feasibility (CVSS)
 ├─ Causal Reasoning → Build attack paths (MITRE ATT&CK)
 ├─ Confidence Evaluation → Check termination criteria met?
@@ -140,8 +154,65 @@ CortexSec employs a sophisticated distributed multi-agent framework:
 
 - **Hierarchical Reinforcement Learning**: Continuously adapts assessment strategy based on coverage, confidence, and uncertainty metrics
 - **Attack-Graph Construction**: Builds explainable chains from vulnerability to business impact
+- **Evidence-Based Exploit Decisions**: Correlates terminal outputs, tool findings, and behavioral observations before confirming exploitability
 - **Non-Destructive Validation**: Simulates attacks in safe mode without system compromise
 - **Pattern Recognition**: Uses memory to prioritize high-value findings in repeat assessments
+
+### Evidence & Validation Framework (Research-Based)
+
+To make exploit and vulnerability decisions more defensible, CortexSec follows established security-testing standards:
+
+- **OWASP WSTG-Aligned Test Design**: Discovery and verification logic follows OWASP Web Security Testing Guide principles for repeatable web security testing.
+- **NIST SP 800-115 Style Execution Discipline**: Terminal/tool runs are treated as structured technical tests with planning, evidence collection, and documented analysis.
+- **PTES-Inspired Workflow Coverage**: Findings are contextualized across reconnaissance, vulnerability analysis, and reporting phases for operational realism.
+- **FIRST CVSS v3.1 Severity Normalization**: Confirmed findings are scored using CVSS-style impact/exploitability dimensions to support prioritization.
+- **MITRE ATT&CK Technique Mapping**: Validated behaviors are mapped to ATT&CK techniques to improve detection and defensive response planning.
+
+Reference standards:
+- OWASP Web Security Testing Guide (WSTG): https://owasp.org/www-project-web-security-testing-guide/
+- NIST SP 800-115 Technical Guide to Information Security Testing and Assessment: https://csrc.nist.gov/publications/detail/sp/800-115/final
+- Penetration Testing Execution Standard (PTES): http://www.pentest-standard.org/index.php/Main_Page
+- FIRST CVSS v3.1 Specification: https://www.first.org/cvss/v3-1/specification-document
+- MITRE ATT&CK Framework: https://attack.mitre.org/
+
+### 🚀 Research-Backed Upgrades to Make Agents More Autonomous
+
+If your goal is to make CortexSec agents significantly more powerful in real autonomous operations, prioritize these updates:
+
+1. **Planner → Executor → Critic Multi-Agent Loop**
+   - Add an explicit planning agent, execution agent, and critic/verifier agent with iterative self-correction before finalizing findings.
+   - Why: modern agent research shows better task reliability when actions are proposed, executed, and independently critiqued.
+
+2. **ReAct + Toolformer-Style Tool Calling**
+   - Standardize all agent reasoning into `Thought → Action → Observation` traces and train prompts/policies for when tools should be called.
+   - Why: improves grounded decisions, reduces hallucinated findings, and makes tool usage auditable.
+
+3. **Reflexion-Style Failure Memory**
+   - Persist "what failed + why" (payload families, false-positive patterns, dead-end exploit chains) and feed it into subsequent planning.
+   - Why: autonomous agents improve faster when they learn from prior mistakes, not only successes.
+
+4. **Policy-as-Code Safety Gates for Every Action**
+   - Add pre-action and post-action guardrails (scope check, non-destructive check, rate-limit check, sensitive-endpoint check) as enforceable policies.
+   - Why: keeps autonomy high while preserving legal/safety boundaries in continuous testing.
+
+5. **Evidence Graph Instead of Flat Logs**
+   - Convert command outputs into a graph: `target surface → test action → observation artifact → vulnerability hypothesis → confidence`.
+   - Why: enables reproducible exploitability decisions and improves report explainability.
+
+6. **Uncertainty-Aware Stopping Logic**
+   - Move from fixed loop exits to uncertainty-based stopping (stop when marginal confidence gain drops below threshold).
+   - Why: reduces wasted scans and improves focus on high-impact unresolved attack paths.
+
+7. **Continuous Evaluation Harness (Agent Benchmarks)**
+   - Add regression evaluation for autonomous behavior: precision/recall of findings, false-positive rate, reproducibility score, time-to-evidence.
+   - Why: autonomy quality degrades without benchmark-driven iteration.
+
+Suggested research references for these upgrades:
+- ReAct (reasoning + acting): https://arxiv.org/abs/2210.03629
+- Toolformer (self-supervised tool use): https://arxiv.org/abs/2302.04761
+- Reflexion (verbal reinforcement/self-improvement): https://arxiv.org/abs/2303.11366
+- NIST AI Risk Management Framework (governed AI operations): https://www.nist.gov/itl/ai-risk-management-framework
+- MITRE ATLAS (adversarial threats against AI-enabled systems): https://atlas.mitre.org/
 
 ---
 
