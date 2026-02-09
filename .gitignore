@@ -18,13 +18,12 @@ var/
 .installed.cfg
 *.egg
 
-# Project Source Code (ignore agents, config files)
-cortexsec/
-ai_pentest/
+# Project Source Code
+# cortexsec/ - Allow tracking code
+# tests/ - Allow tracking tests
 reports/
 *.config
 *.cfg
-tests/
 
 # Environments
 .env
