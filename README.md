@@ -100,6 +100,7 @@ All without destructive actions. Perfect for **security researchers**, **penetra
 ### Safety & Control
 - **Lab-Safe Execution Mode**: Built-in guards preventing unauthorized targeting
 - **Non-Destructive Testing**: Safe attack simulation plans without actual exploitation
+- **Human-Like Payload Testing Engine**: Canary, fuzz/boundary, logic-test, and real-world non-destructive payload execution with hypothesis-driven analysis
 - **Authorization-First Validation**: Respects authorized scope boundaries
 
 ---
@@ -111,6 +112,7 @@ All without destructive actions. Perfect for **security researchers**, **penetra
 CortexSec employs a sophisticated distributed multi-agent framework:
 
 - **Reconnaissance Agent**: Maps application attack surface, identifies entry points, and security exposure
+- **Payload Injection Testing Agent**: Designs unique payloads with explicit hypotheses, injects safely, and observes behavior for validation/logic/auth boundary flaws
 - **Vulnerability Analysis Agent**: Discovers weaknesses aligned with OWASP Top 10  classifications
 - **Exploitability Agent**: Evaluates real-world attack feasibility and impact assessment
 - **Memory Agent**: Learns from recurring patterns to improve assessment quality

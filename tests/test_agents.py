@@ -7,6 +7,7 @@ from cortexsec.agents.attack_simulation import AttackSimulationAgent
 from cortexsec.agents.attack_surface_agent import AttackSurfaceAgent
 from cortexsec.agents.exploitability_agent import ExploitabilityAgent
 from cortexsec.agents.memory_agent import MemoryAgent
+from cortexsec.agents.payload_agent import PayloadAgent
 from cortexsec.agents.reasoning_agent import ReasoningAgent
 from cortexsec.agents.recon import ReconAgent
 from cortexsec.agents.report_agent import ReportAgent
@@ -177,6 +178,7 @@ def test_supervisor_retries_failed_agent_and_records_recovery():
     agents = [
         FlakyAgent("ReconAgent", fail_times=1),
         StaticAgent("AttackSurfaceAgent"),
+        StaticAgent("PayloadAgent"),
         StaticAgent("VulnAnalysisAgent"),
         StaticAgent("ReasoningAgent"),
         StaticAgent("ExploitabilityAgent"),
@@ -191,3 +193,81 @@ def test_supervisor_retries_failed_agent_and_records_recovery():
     recovery = [e for e in out.memory.get("agent_recovery_log", []) if e.get("status") == "recovered"]
     assert recovery and recovery[0]["agent"] == "ReconAgent"
     assert out.stop_reason
+
+
+def test_payload_agent_generates_safe_payload_results(monkeypatch):
+    context = base_context()
+    context.attack_surface = {"entry_points": ["/api/test"]}
+
+    class FakeResponse:
+        def __init__(self, text, status_code=200):
+            self.text = text
+            self.status_code = status_code
+
+    def fake_get(*_args, **_kwargs):
+        if "params" in _kwargs and _kwargs["params"].get("q") == "CORTEX_CANARY_02_b91c":
+            return FakeResponse("baseline CORTEX_CANARY_02_b91c")
+        return FakeResponse("baseline")
+
+    def fake_post(*_args, **_kwargs):
+        return FakeResponse("baseline")
+
+    monkeypatch.setattr("requests.get", fake_get)
+    monkeypatch.setattr("requests.post", fake_post)
+
+    out = PayloadAgent(DummyLLM()).run(context)
+    # 2 endpoints (target + discovered) * 5 payloads * 4 vectors
+    assert len(out.payload_tests) == 40
+    assert any(p["status"] == "needs-review" for p in out.payload_tests)
+    assert all(p["request_mode"] in {"query", "json", "form", "header-auth"} for p in out.payload_tests)
+
+
+def test_vuln_analysis_ingests_payload_signals():
+    context = base_context()
+    context.recon_data = {"raw": {"headers": {"Server": "nginx"}}, "analysis": {}}
+    context.payload_tests = [
+        {
+            "payload_type": "logic-test",
+            "status": "needs-review",
+            "goal": "Authorization boundary checks",
+            "evidence": {"status_changed": True},
+        }
+    ]
+
+    out = VulnAnalysisAgent(DummyLLM(json_response={"findings": []})).run(context)
+    assert any(f.title.startswith("Payload-Test Signal") for f in out.findings)
+
+
+def test_payload_agent_destructive_mode_is_plan_only(monkeypatch):
+    context = PentestContext(target="https://example.com", mode="authorized", pro_user=True, destructive_mode=True)
+
+    class FakeResponse:
+        def __init__(self, text, status_code=200):
+            self.text = text
+            self.status_code = status_code
+
+    monkeypatch.setattr("requests.get", lambda *_a, **_k: FakeResponse("ok"))
+    monkeypatch.setattr("requests.post", lambda *_a, **_k: FakeResponse("ok"))
+
+    out = PayloadAgent(DummyLLM()).run(context)
+    assert any("execution blocked" in h.get("message", "") for h in out.history)
+
+
+def test_attack_simulation_includes_destructive_plan_when_enabled():
+    context = PentestContext(target="https://example.com", mode="authorized", pro_user=True, destructive_mode=True)
+    context.findings = [Finding(title="A", description="d", severity="Low", confidence=0.5, evidence="e")]
+    out = AttackSimulationAgent(DummyLLM()).run(context)
+    assert out.attack_simulation[0]["destructive_mode"] is True
+    assert out.attack_simulation[0]["destructive_plan"]
+
+
+def test_cli_destructive_requires_pro_user():
+    from typer.testing import CliRunner
+    from cortexsec.cli.main import app
+
+    runner = CliRunner()
+    result = runner.invoke(app, [
+        "--target", "http://localhost:8080", "--mode", "lab", "--destructive-mode"
+    ])
+    assert result.exit_code == 1
+    assert "requires --pro-user" in result.stdout

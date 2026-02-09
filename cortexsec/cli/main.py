@@ -6,6 +6,7 @@ from cortexsec.core.agent import PentestContext
 from cortexsec.core.planner import SupervisorAgent
 from cortexsec.agents.recon import ReconAgent
 from cortexsec.agents.attack_surface_agent import AttackSurfaceAgent
+from cortexsec.agents.payload_agent import PayloadAgent
 from cortexsec.agents.vuln_analysis import VulnAnalysisAgent
 from cortexsec.agents.reasoning_agent import ReasoningAgent
 from cortexsec.agents.exploitability_agent import ExploitabilityAgent
@@ -36,6 +37,8 @@ def start(
     max_auto_extensions: int = typer.Option(2, "--max-auto-extensions", help="Maximum extra cycles when continuous improvement is enabled"),
     retry_failed_agents: int = typer.Option(1, "--retry-failed-agents", help="Retries per agent when a cycle step fails"),
     vuln_refinement_rounds: int = typer.Option(2, "--vuln-refinement-rounds", help="Extra research-style refinement rounds in vulnerability analysis"),
+    pro_user: bool = typer.Option(False, "--pro-user", help="Enable pro workflow features"),
+    destructive_mode: bool = typer.Option(False, "--destructive-mode", help="Pro-only: generate destructive test plans (execution is blocked by safety policy)"),
 ):
     """Start a fully autonomous security assessment."""
     console.print(f"[bold blue]Starting AI Security Assessment for:[/bold blue] {target}")
@@ -44,6 +47,14 @@ def start(
     if mode == "lab" and not (target.startswith("http://localhost") or "127.0.0.1" in target):
         console.print("[bold red]Error: Lab mode only supports localhost targets.[/bold red]")
         raise typer.Exit(code=1)
+
+
+    if destructive_mode and not pro_user:
+        console.print("[bold red]Error:[/bold red] --destructive-mode requires --pro-user.")
+        raise typer.Exit(code=1)
+
+    if destructive_mode:
+        console.print("[bold yellow]Safety:[/bold yellow] Destructive mode is planning-only in CortexSec. No destructive payloads are executed automatically.")
 
     try:
         llm = create_llm(provider=provider, model=model, api_key=api_key)
@@ -54,6 +65,7 @@ def start(
     agents = [
         ReconAgent(llm),
         AttackSurfaceAgent(llm),
+        PayloadAgent(llm),
         VulnAnalysisAgent(llm, refinement_rounds=vuln_refinement_rounds),
         ReasoningAgent(llm),
         ExploitabilityAgent(llm),
@@ -76,7 +88,13 @@ def start(
         retry_failed_agents=retry_failed_agents,
     )
 
-    context = PentestContext(target=target, mode=mode, continuous_improvement=continuous_improvement)
+    context = PentestContext(
+        target=target,
+        mode=mode,
+        continuous_improvement=continuous_improvement,
+        pro_user=pro_user,
+        destructive_mode=destructive_mode,
+    )
     final_context = supervisor.run(context)
 
     console.print("\n[bold green]Assessment Complete![/bold green]")

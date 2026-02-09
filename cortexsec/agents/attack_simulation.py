@@ -26,10 +26,20 @@ class AttackSimulationAgent(BaseAgent):
                         "Record logs and stop immediately after validation.",
                     ],
                     "safety_rules": [
-                        "Do not run destructive payloads.",
+                        "Use real-world but non-destructive payload checks only; never execute destructive actions.",
                         "Do not automate exploitation against unauthorized targets.",
                         "Get written authorization before any active testing.",
                     ],
+                    "destructive_mode": context.destructive_mode,
+                    "destructive_plan": (
+                        [
+                            "Plan-only: define rollback steps and snapshot strategy.",
+                            "Require written approval and maintenance window.",
+                            "Never auto-execute destructive payloads from CortexSec runtime.",
+                        ]
+                        if context.destructive_mode
+                        else []
+                    ),
                 }
             )
 

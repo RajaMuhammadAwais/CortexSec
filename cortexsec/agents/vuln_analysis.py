@@ -12,6 +12,29 @@ class VulnAnalysisAgent(BaseAgent):
     def _finding_key(self, finding: Finding) -> str:
         return f"{finding.title}|{finding.evidence}"
 
+    def _payload_signal_to_finding(self, signal: dict) -> Finding:
+        evidence = signal.get("evidence", {})
+        payload_type = signal.get("payload_type", "unknown")
+        goal = signal.get("goal", "payload-based validation")
+        return Finding(
+            title=f"Payload-Test Signal: {payload_type}",
+            description=(
+                "Safe payload injection produced a behavioral difference requiring manual triage. "
+                f"Goal: {goal}."
+            ),
+            severity="Medium",
+            confidence=0.7,
+            evidence=str(evidence),
+            mitigation=(
+                "Harden input validation and canonicalization, enforce strict authorization checks on all state transitions, "
+                "and apply consistent output encoding/sanitization."
+            ),
+            cvss_score=5.8,
+            owasp_mapping="A01/A03/A04",
+            mitre_mapping="T1190",
+        )
+
+
     def run(self, context: PentestContext) -> PentestContext:
         self.log("Analyzing data for vulnerabilities...")
 
@@ -74,6 +97,11 @@ class VulnAnalysisAgent(BaseAgent):
                 dedupe[self._finding_key(finding)] = finding
         else:
             self.log("Skipping HTTP quick checks because recon did not return response headers.")
+
+        payload_signals = [p for p in context.payload_tests if p.get("status") == "needs-review"]
+        for signal in payload_signals:
+            finding = self._payload_signal_to_finding(signal)
+            dedupe[self._finding_key(finding)] = finding
 
         context.findings = list(dedupe.values())
         self.log(f"Analysis complete. Total unique findings: {len(context.findings)}")

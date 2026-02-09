@@ -51,11 +51,18 @@ class ReportAgent(BaseAgent):
         Safe Attack Simulation Playbooks:
         {context.attack_simulation}
 
+        Payload Injection Test Results (real-world, non-destructive):
+        {context.payload_tests}
+
         Agent Memory:
         {context.memory}
 
         Orchestrator Learning State:
         {context.orchestrator_learning}
+
+        Operating Mode Flags:
+        pro_user={context.pro_user}
+        destructive_mode={context.destructive_mode}
 
         Assessment Metrics and Stop Condition:
         metrics={context.assessment_metrics}
@@ -69,8 +76,10 @@ class ReportAgent(BaseAgent):
         5) Detailed Findings with OWASP, CVSS, MITRE mapping
         6) Real-World Exploitability and Business-Impact Evaluation (non-destructive only)
         7) Orchestrator Learning Summary (reward, strategy shifts, convergence)
-        8) Prioritized Remediation Roadmap
-        9) Conclusion
+        8) Pentest-Style Real-World Payload Analysis (hypothesis, observed behavior, risk, false-positive checks)
+        9) Prioritized Remediation Roadmap
+        10) Destructive-Mode Plan (if enabled): authorization prerequisites, rollback, blast-radius controls
+        11) Conclusion
 
         Keep it explainable, concise, and professional markdown.
         """
