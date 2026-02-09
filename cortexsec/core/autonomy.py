@@ -88,8 +88,19 @@ class CommandExecutor:
 
         started = time.perf_counter()
         try:
+            argv = shlex.split(command)
+            if not argv:
+                return ExecutorOutput(
+                    command=command,
+                    exit_code=2,
+                    stdout="",
+                    stderr="invalid-command:empty",
+                    duration_ms=0,
+                    timestamp_utc=now,
+                )
+
             proc = subprocess.run(
-                shlex.split(command),
+                argv,
                 capture_output=True,
                 text=True,
                 timeout=self.timeout_seconds,
@@ -111,6 +122,16 @@ class CommandExecutor:
                 exit_code=124,
                 stdout=exc.stdout or "",
                 stderr="timeout",
+                duration_ms=duration,
+                timestamp_utc=now,
+            )
+        except FileNotFoundError:
+            duration = int((time.perf_counter() - started) * 1000)
+            return ExecutorOutput(
+                command=command,
+                exit_code=127,
+                stdout="",
+                stderr="command-not-found",
                 duration_ms=duration,
                 timestamp_utc=now,
             )
