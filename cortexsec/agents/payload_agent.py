@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -28,33 +28,33 @@ class PayloadAgent(BaseAgent):
         return [
             PayloadSpec(
                 payload_type="canary",
-                value="CORTEX_CANARY_02_b91c",
+                value="CORTEX_CANARY_03_f4ad",
                 goal="Input flow tracing",
-                hypothesis="A reflected marker suggests weak output handling or unsanitized reflection paths.",
+                hypothesis="A reflected marker suggests unsanitized reflection path exposure.",
             ),
             PayloadSpec(
                 payload_type="fuzz-boundary",
                 value="A" * 8192,
                 goal="Boundary validation",
-                hypothesis="Oversized inputs may trigger inconsistent validation or parser behavior.",
+                hypothesis="Oversized inputs may reveal weak length and parser guards.",
             ),
             PayloadSpec(
                 payload_type="fuzz-boundary",
                 value="%00%0a%0d%F0%9F%92%A5",
                 goal="Encoding and parser consistency",
-                hypothesis="If canonicalization is inconsistent, encoded and mixed-byte inputs may alter response patterns.",
+                hypothesis="Encoding edge-cases can expose inconsistent canonicalization.",
             ),
             PayloadSpec(
                 payload_type="logic-test",
                 value='{"role":"admin","account_id":"other-tenant"}',
                 goal="Authorization boundary checks",
-                hypothesis="Role/tenant mismatch values may reveal missing authorization checks.",
+                hypothesis="Role/tenant mismatch may reveal authorization boundary weaknesses.",
             ),
             PayloadSpec(
                 payload_type="logic-test",
                 value="state=approved&workflow_step=final",
                 goal="State manipulation checks",
-                hypothesis="If state transitions are weakly enforced, direct state-jump values may alter behavior.",
+                hypothesis="Direct state-jump values may bypass workflow enforcement.",
             ),
         ]
 
@@ -75,7 +75,6 @@ class PayloadAgent(BaseAgent):
             elif item.startswith("/"):
                 endpoints.append(urljoin(target + "/", item.lstrip("/")))
 
-        # preserve order + uniqueness
         return list(dict.fromkeys(endpoints))[:5]
 
     def _baseline(self, url: str) -> Dict[str, Any]:
@@ -87,6 +86,19 @@ class PayloadAgent(BaseAgent):
         except Exception:  # noqa: BLE001
             pass
         return baseline
+
+    def _execute_vector(self, url: str, vector: str, value: str):
+        if vector == "query":
+            return requests.get(url, params={"q": value}, timeout=self.timeout)
+        if vector == "json":
+            return requests.post(url, json={"input": value}, timeout=self.timeout)
+        if vector == "form":
+            return requests.post(url, data={"input": value}, timeout=self.timeout)
+        return requests.get(
+            url,
+            headers={"X-User-Role": "user", "X-Requested-Role": "admin", "X-Pentest-Input": value},
+            timeout=self.timeout,
+        )
 
     def _run_vector(self, url: str, payload: PayloadSpec, vector: str, baseline: Dict[str, Any]) -> Dict[str, Any]:
         result = {
@@ -103,48 +115,66 @@ class PayloadAgent(BaseAgent):
         }
 
         try:
-            if vector == "query":
-                response = requests.get(url, params={"q": payload.value}, timeout=self.timeout)
-            elif vector == "json":
-                response = requests.post(url, json={"input": payload.value}, timeout=self.timeout)
-            elif vector == "form":
-                response = requests.post(url, data={"input": payload.value}, timeout=self.timeout)
-            else:  # header/auth-boundary
-                response = requests.get(
-                    url,
-                    headers={"X-User-Role": "user", "X-Requested-Role": "admin", "X-Pentest-Input": payload.value},
-                    timeout=self.timeout,
-                )
+            # Experimental design: payload request + paired negative control request.
+            payload_response = self._execute_vector(url, vector, payload.value)
+            control_response = self._execute_vector(url, vector, "CORTEX_CTRL_NEUTRAL")
 
-            body = response.text or ""
-            status_changed = baseline.get("status_code") is not None and baseline.get("status_code") != response.status_code
+            body = payload_response.text or ""
+            control_body = control_response.text or ""
+
+            status_changed = baseline.get("status_code") is not None and baseline.get("status_code") != payload_response.status_code
             length_changed = abs(len(body) - int(baseline.get("body_length", 0))) > 200
             canary_reflected = payload.value in body
-            auth_signal = response.status_code in {401, 403} or any(
+            auth_signal = payload_response.status_code in {401, 403} or any(
                 token in body.lower() for token in ["forbidden", "unauthorized", "permission", "access denied"]
             )
+
+            control_status_changed = baseline.get("status_code") is not None and baseline.get("status_code") != control_response.status_code
+            control_length_changed = abs(len(control_body) - int(baseline.get("body_length", 0))) > 200
+
+            perturbation_score = 0
+            perturbation_score += 1 if status_changed and not control_status_changed else 0
+            perturbation_score += 1 if length_changed and not control_length_changed else 0
+            perturbation_score += 1 if canary_reflected else 0
+            perturbation_score += 1 if auth_signal and not control_status_changed else 0
+
+            reproducible: Optional[bool] = None
+            if perturbation_score >= 2:
+                replay_response = self._execute_vector(url, vector, payload.value)
+                replay_body = replay_response.text or ""
+                replay_length_changed = abs(len(replay_body) - int(baseline.get("body_length", 0))) > 200
+                reproducible = replay_response.status_code == payload_response.status_code and replay_length_changed == length_changed
 
             result["observed"] = "response-received"
             result["evidence"] = {
                 "baseline_status": baseline.get("status_code"),
-                "payload_status": response.status_code,
+                "payload_status": payload_response.status_code,
+                "control_status": control_response.status_code,
                 "baseline_body_length": baseline.get("body_length", 0),
                 "payload_body_length": len(body),
+                "control_body_length": len(control_body),
                 "status_changed": status_changed,
                 "length_changed": length_changed,
+                "control_status_changed": control_status_changed,
+                "control_length_changed": control_length_changed,
                 "canary_reflected": canary_reflected,
                 "authorization_signal": auth_signal,
+                "perturbation_score": perturbation_score,
+                "reproducible": reproducible,
             }
 
-            if status_changed or length_changed or canary_reflected:
+            if perturbation_score >= 2:
                 result["status"] = "needs-review"
                 result["reasoning"] = (
-                    "Real endpoint behavior changed under non-destructive payload injection. "
-                    "Review for validation, logic, or authorization control weaknesses."
+                    "Payload produced stronger perturbation than paired neutral control. "
+                    "Potential validation/logic/auth weakness; confirm manually."
                 )
+            elif perturbation_score == 1:
+                result["status"] = "weak-signal"
+                result["reasoning"] = "Single weak anomaly observed; treat as low-confidence signal."
             else:
                 result["status"] = "no-strong-signal"
-                result["reasoning"] = "No significant behavior delta observed."
+                result["reasoning"] = "No payload-specific perturbation over control baseline."
 
         except Exception as exc:  # noqa: BLE001
             result["observed"] = "request-error"
@@ -157,11 +187,13 @@ class PayloadAgent(BaseAgent):
         self.log("Running real-world payload injection tests (non-destructive) against live entry points...")
 
         if context.destructive_mode:
-            context.history.append({
-                "agent": self.name,
-                "message": "Destructive mode requested: execution blocked; planning metadata only",
-                "policy": "No destructive payload execution by design",
-            })
+            context.history.append(
+                {
+                    "agent": self.name,
+                    "message": "Destructive mode requested: execution blocked; planning metadata only",
+                    "policy": "No destructive payload execution by design",
+                }
+            )
 
         if not self._is_http_target(context.target):
             context.history.append({"agent": self.name, "message": "Skipped payload tests (non-HTTP target)"})
@@ -178,14 +210,17 @@ class PayloadAgent(BaseAgent):
 
         context.payload_tests = results
         high_signal = [r for r in results if r.get("status") == "needs-review"]
+        weak_signal = [r for r in results if r.get("status") == "weak-signal"]
         context.history.append(
             {
                 "agent": self.name,
                 "message": "Payload testing completed",
                 "tests_run": len(results),
                 "signals": len(high_signal),
+                "weak_signals": len(weak_signal),
                 "execution_mode": "real-world",
+                "design": "paired-control perturbation testing",
             }
         )
-        self.log(f"Payload tests executed: {len(results)} | signals: {len(high_signal)}")
+        self.log(f"Payload tests executed: {len(results)} | strong: {len(high_signal)} | weak: {len(weak_signal)}")
         return context

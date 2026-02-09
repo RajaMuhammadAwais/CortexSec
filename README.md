@@ -101,6 +101,7 @@ All without destructive actions. Perfect for **security researchers**, **penetra
 - **Lab-Safe Execution Mode**: Built-in guards preventing unauthorized targeting
 - **Non-Destructive Testing**: Safe attack simulation plans without actual exploitation
 - **Human-Like Payload Testing Engine**: Canary, fuzz/boundary, logic-test, and real-world non-destructive payload execution with hypothesis-driven analysis
+- **Scientific Perturbation Logic**: Paired control-vs-payload experiments with reproducibility checks for lower false positives in real-world testing
 - **Authorization-First Validation**: Respects authorized scope boundaries
 
 ---

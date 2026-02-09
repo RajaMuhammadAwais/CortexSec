@@ -20,19 +20,38 @@ class VulnAnalysisAgent(BaseAgent):
     def _build_hypothesis_matrix(self, payload_tests: list) -> dict:
         total = len(payload_tests)
         strong = len([p for p in payload_tests if p.get("status") == "needs-review"])
+        weak = len([p for p in payload_tests if p.get("status") == "weak-signal"])
         inconclusive = len([p for p in payload_tests if p.get("status") == "inconclusive"])
-        signal_ratio = round((strong / total), 3) if total else 0.0
+
+        reproducible = 0
+        perturbation_total = 0
+        for p in payload_tests:
+            evidence = p.get("evidence", {}) if isinstance(p, dict) else {}
+            perturbation_total += int(evidence.get("perturbation_score", 0) or 0)
+            if evidence.get("reproducible") is True:
+                reproducible += 1
+
+        weighted_signal = strong + (0.35 * weak)
+        signal_ratio = round((weighted_signal / total), 3) if total else 0.0
+        reproducibility_ratio = round((reproducible / max(strong, 1)), 3) if strong else 0.0
+        mean_perturbation = round((perturbation_total / total), 3) if total else 0.0
+
         return {
             "tests_total": total,
             "signals_strong": strong,
+            "signals_weak": weak,
             "signals_inconclusive": inconclusive,
             "signal_ratio": signal_ratio,
-            "hypothesis": "Weak controls should produce reproducible behavior deltas under non-destructive payloads.",
+            "reproducibility_ratio": reproducibility_ratio,
+            "mean_perturbation": mean_perturbation,
+            "hypothesis": "Weak controls should produce reproducible payload perturbations that exceed paired neutral controls.",
         }
 
-    def _calibrate_confidence(self, finding: Finding, signal_ratio: float) -> Finding:
+    def _calibrate_confidence(self, finding: Finding, signal_ratio: float, reproducibility_ratio: float, mean_perturbation: float) -> Finding:
         prior = max(0.0, min(1.0, finding.confidence))
-        posterior = round(min(1.0, (0.7 * prior) + (0.3 * (signal_ratio * self._severity_weight(finding.severity) + 0.2))), 3)
+        severity_term = signal_ratio * self._severity_weight(finding.severity)
+        evidence_term = (0.55 * severity_term) + (0.3 * reproducibility_ratio) + (0.15 * min(mean_perturbation / 4.0, 1.0))
+        posterior = round(min(1.0, (0.65 * prior) + (0.35 * (evidence_term + 0.2))), 3)
         finding.confidence = posterior
         return finding
 
@@ -129,12 +148,23 @@ class VulnAnalysisAgent(BaseAgent):
 
         matrix = self._build_hypothesis_matrix(context.payload_tests)
         signal_ratio = float(matrix.get("signal_ratio", 0.0))
-        context.findings = [self._calibrate_confidence(f, signal_ratio) for f in list(dedupe.values())]
+        reproducibility_ratio = float(matrix.get("reproducibility_ratio", 0.0))
+        mean_perturbation = float(matrix.get("mean_perturbation", 0.0))
+        context.findings = [
+            self._calibrate_confidence(f, signal_ratio, reproducibility_ratio, mean_perturbation)
+            for f in list(dedupe.values())
+        ]
+
+        fp_risk = "high"
+        if signal_ratio >= 0.35 and reproducibility_ratio >= 0.5:
+            fp_risk = "low"
+        elif signal_ratio >= 0.15:
+            fp_risk = "medium"
 
         context.scientific_analysis = {
             "method": "Embedded scientific confidence calibration in VulnAnalysisAgent",
             "hypothesis_matrix": matrix,
-            "false_positive_risk": "high" if signal_ratio < 0.1 else "medium" if signal_ratio < 0.3 else "low",
+            "false_positive_risk": fp_risk,
         }
 
         self.log(f"Analysis complete. Total unique findings: {len(context.findings)}")

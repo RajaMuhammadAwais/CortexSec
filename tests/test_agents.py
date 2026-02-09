@@ -205,8 +205,8 @@ def test_payload_agent_generates_safe_payload_results(monkeypatch):
             self.status_code = status_code
 
     def fake_get(*_args, **_kwargs):
-        if "params" in _kwargs and _kwargs["params"].get("q") == "CORTEX_CANARY_02_b91c":
-            return FakeResponse("baseline CORTEX_CANARY_02_b91c")
+        if "params" in _kwargs and _kwargs["params"].get("q") == "CORTEX_CANARY_03_f4ad":
+            return FakeResponse("baseline CORTEX_CANARY_03_f4ad")
         return FakeResponse("baseline")
 
     def fake_post(*_args, **_kwargs):
@@ -218,7 +218,8 @@ def test_payload_agent_generates_safe_payload_results(monkeypatch):
     out = PayloadAgent(DummyLLM()).run(context)
     # 2 endpoints (target + discovered) * 5 payloads * 4 vectors
     assert len(out.payload_tests) == 40
-    assert any(p["status"] == "needs-review" for p in out.payload_tests)
+    assert any(p["status"] in {"needs-review", "weak-signal"} for p in out.payload_tests)
+    assert all("perturbation_score" in p.get("evidence", {}) for p in out.payload_tests)
     assert all(p["request_mode"] in {"query", "json", "form", "header-auth"} for p in out.payload_tests)
 
 
