@@ -268,7 +268,8 @@ class CommunicationOrchestrator:
         if not selected_candidates:
             return None
 
-        # Planning-first rule: before any work, Planner must speak first.
+        # Planning-first rule: before any work, Planner must speak first
+        # even when receiver filtering omitted Planner from selected candidates.
         if message.context_id not in self._planned_contexts:
             planner = self.agents.get("Planner")
             if planner and planner.name != message.sender:
