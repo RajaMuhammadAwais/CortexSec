@@ -46,6 +46,8 @@ class PentestContext(BaseModel):
     stop_reason: str = ""
     history: List[Dict[str, Any]] = Field(default_factory=list)
     continuous_improvement: bool = False
+    require_findings_before_stop: bool = False
+    max_no_finding_extensions: int = 3
     pro_user: bool = False
     destructive_mode: bool = False
 

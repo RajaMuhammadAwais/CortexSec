@@ -58,6 +58,12 @@ class ReportAgent(BaseAgent):
         Payload Injection Test Results (real-world, non-destructive):
         {context.payload_tests}
 
+        Competitive Planning Data:
+        parity_matrix={context.memory.get("competitive_parity_matrix", {})}
+        maturity={context.memory.get("competitive_maturity", {})}
+        initiatives={context.memory.get("competitive_initiatives", [])}
+        references={context.memory.get("competitive_research_references", [])}
+
         Agent Memory:
         {context.memory}
 
@@ -84,7 +90,8 @@ class ReportAgent(BaseAgent):
         9) Scientific Confidence Calibration (hypothesis quality, signal strength, false-positive risk)
         10) Prioritized Remediation Roadmap
         11) Destructive-Mode Plan (if enabled): authorization prerequisites, rollback, blast-radius controls
-        12) Conclusion
+        12) Competitive Research Roadmap (tool parity, maturity score, 30-60-90 day initiatives, KPIs)
+        13) Conclusion
 
         Keep it explainable, concise, and professional markdown.
         """

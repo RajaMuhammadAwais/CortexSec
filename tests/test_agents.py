@@ -474,3 +474,32 @@ def test_supervisor_complete_flow_negative_network_failures(monkeypatch, tmp_pat
     assert out.payload_tests
     assert any(t.get("status") == "inconclusive" for t in out.payload_tests)
     assert (tmp_path / "reports" / "pentest_report.md").exists()
+
+
+def test_supervisor_extends_when_findings_required_but_none_present():
+    context = base_context()
+    context.require_findings_before_stop = True
+    context.max_no_finding_extensions = 2
+
+    agents = [StaticAgent("ReconAgent")]
+    supervisor = SupervisorAgent(DummyLLM(), agents, max_cycles=1, retry_failed_agents=0)
+
+    out = supervisor.run(context)
+
+    assert out.memory.get("no_finding_extensions_used") == 2
+    assert "max cycles (3)" in out.stop_reason
+
+
+def test_supervisor_does_not_extend_when_findings_exist():
+    context = base_context()
+    context.require_findings_before_stop = True
+    context.max_no_finding_extensions = 3
+    context.findings = [Finding(title="Signal", description="d", severity="Low", confidence=0.6, evidence="e")]
+
+    agents = [StaticAgent("ReconAgent")]
+    supervisor = SupervisorAgent(DummyLLM(), agents, max_cycles=1, retry_failed_agents=0)
+
+    out = supervisor.run(context)
+
+    assert out.memory.get("no_finding_extensions_used") == 0
+    assert "max cycles (1)" in out.stop_reason

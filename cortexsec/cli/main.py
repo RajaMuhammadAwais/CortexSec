@@ -19,6 +19,7 @@ from cortexsec.agents.exploitability_agent import ExploitabilityAgent
 from cortexsec.agents.risk_agent import RiskAgent
 from cortexsec.agents.attack_simulation import AttackSimulationAgent
 from cortexsec.agents.memory_agent import MemoryAgent
+from cortexsec.agents.competitive_planning_agent import CompetitivePlanningAgent
 from cortexsec.agents.remediation_advisor import RemediationAdvisor
 from cortexsec.agents.report_agent import ReportAgent
 from cortexsec.core.agent_communication import CommunicationOrchestrator, build_default_agent_team
@@ -43,6 +44,8 @@ def main(
     exploitability_threshold: float = typer.Option(0.75, "--exploitability-threshold", help="Minimum exploitability confidence required across reachable findings"),
     min_stable_cycles: int = typer.Option(1, "--min-stable-cycles", help="Require this many cycles with no new findings before stopping"),
     continuous_improvement: bool = typer.Option(False, "--continuous-improvement", help="Keep refining even after convergence by extending extra cycles"),
+    require_findings_before_stop: bool = typer.Option(False, "--require-findings-before-stop", help="Keep extending bounded research cycles until at least one validated finding exists"),
+    max_no_finding_extensions: int = typer.Option(3, "--max-no-finding-extensions", help="Maximum bounded extensions when no validated findings are present"),
     max_auto_extensions: int = typer.Option(2, "--max-auto-extensions", help="Maximum extra cycles when continuous improvement is enabled"),
     retry_failed_agents: int = typer.Option(1, "--retry-failed-agents", help="Retries per agent when a cycle step fails"),
     vuln_refinement_rounds: int = typer.Option(2, "--vuln-refinement-rounds", help="Extra research-style refinement rounds in vulnerability analysis"),
@@ -70,6 +73,8 @@ def main(
         exploitability_threshold=exploitability_threshold,
         min_stable_cycles=min_stable_cycles,
         continuous_improvement=continuous_improvement,
+        require_findings_before_stop=require_findings_before_stop,
+        max_no_finding_extensions=max_no_finding_extensions,
         max_auto_extensions=max_auto_extensions,
         retry_failed_agents=retry_failed_agents,
         vuln_refinement_rounds=vuln_refinement_rounds,
@@ -93,6 +98,8 @@ def start(
     exploitability_threshold: float = typer.Option(0.75, "--exploitability-threshold", help="Minimum exploitability confidence required across reachable findings"),
     min_stable_cycles: int = typer.Option(1, "--min-stable-cycles", help="Require this many cycles with no new findings before stopping"),
     continuous_improvement: bool = typer.Option(False, "--continuous-improvement", help="Keep refining even after convergence by extending extra cycles"),
+    require_findings_before_stop: bool = typer.Option(False, "--require-findings-before-stop", help="Keep extending bounded research cycles until at least one validated finding exists"),
+    max_no_finding_extensions: int = typer.Option(3, "--max-no-finding-extensions", help="Maximum bounded extensions when no validated findings are present"),
     max_auto_extensions: int = typer.Option(2, "--max-auto-extensions", help="Maximum extra cycles when continuous improvement is enabled"),
     retry_failed_agents: int = typer.Option(1, "--retry-failed-agents", help="Retries per agent when a cycle step fails"),
     vuln_refinement_rounds: int = typer.Option(2, "--vuln-refinement-rounds", help="Extra research-style refinement rounds in vulnerability analysis"),
@@ -137,6 +144,7 @@ def start(
         RiskAgent(llm),
         AttackSimulationAgent(llm),
         MemoryAgent(llm),
+        CompetitivePlanningAgent(llm),
         RemediationAdvisor(llm),
         ReportAgent(llm),
     ]
@@ -159,6 +167,8 @@ def start(
         target=target,
         mode=mode,
         continuous_improvement=continuous_improvement,
+        require_findings_before_stop=require_findings_before_stop,
+        max_no_finding_extensions=max_no_finding_extensions,
         pro_user=pro_user,
         destructive_mode=destructive_mode,
     )
