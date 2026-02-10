@@ -20,6 +20,7 @@ from cortexsec.agents.attack_simulation import AttackSimulationAgent
 from cortexsec.agents.memory_agent import MemoryAgent
 from cortexsec.agents.remediation_advisor import RemediationAdvisor
 from cortexsec.agents.report_agent import ReportAgent
+from cortexsec.core.agent_communication import CommunicationOrchestrator, build_default_agent_team
 
 load_dotenv()
 console = Console()
@@ -126,6 +127,19 @@ def start(
     )
     console.print(f"Stop Reason: {final_context.stop_reason}")
     console.print("Check the 'reports' directory for the final report.")
+
+
+@app.command("agent-chat")
+def agent_chat(
+    prompt: str = typer.Option(..., "--prompt", "-p", help="Task prompt for the agent team"),
+    context_id: str = typer.Option("session-1", "--context-id", help="Conversation context identifier"),
+    max_turns: int = typer.Option(12, "--max-turns", help="Maximum turn-based exchanges"),
+):
+    """Run a CLI demo of the real-time turn-based communication layer."""
+    orchestrator = CommunicationOrchestrator(build_default_agent_team())
+    console.print("[bold blue]Starting multi-agent communication demo[/bold blue]")
+    orchestrator.run_session(user_prompt=prompt, context_id=context_id, max_turns=max_turns)
+
 
 
 if __name__ == "__main__":
