@@ -7,6 +7,8 @@ from typing import Deque, Dict, Iterable, List, Optional, Set, Tuple
 import random
 import time
 
+from cortexsec.core.agent_skills import skills_for_role
+
 
 VALID_INTENTS = {"question", "task", "info", "feedback"}
 
@@ -48,6 +50,7 @@ class RoleProfile:
     role: str
     emoji: str
     responsibilities: Tuple[str, ...]
+    skills: Tuple[str, ...]
 
 
 class CommunicatingAgent:
@@ -117,6 +120,24 @@ class CommunicatingAgent:
         delay_min, delay_max = self.delay_range
         time.sleep(random.uniform(delay_min, delay_max))
 
+    def pick_skill(self, intent: str, content: str) -> str:
+        """Select a role skill with lightweight matching against intent/content."""
+        lowered = content.lower()
+        for skill in self.profile.skills:
+            skill_lower = skill.lower()
+            if any(token in skill_lower for token in lowered.split()):
+                return skill
+
+        by_intent = {
+            "task": 0,
+            "question": 1,
+            "feedback": 2,
+            "info": -1,
+        }
+        if not self.profile.skills:
+            return "general"
+        return self.profile.skills[by_intent.get(intent, 0) % len(self.profile.skills)]
+
     def generate_response(self, message: AgentMessage) -> Optional[Tuple[str, str, List[str]]]:
         action = self.decide_action(message)
         if action == "ignore":
@@ -124,37 +145,54 @@ class CommunicatingAgent:
 
         self._sleep_for_realism()
         context_count = self._context_seen_count(message.context_id)
+        inferred_intent = self.infer_intent(message)
+        chosen_skill = self.pick_skill(inferred_intent, message.content)
 
         if action == "store":
             reason = "I am recording this in shared memory before acting"
-            response = f"{reason}. I now have {context_count} messages saved for context {message.context_id}."
+            response = (
+                f"{reason}. Skill used: {chosen_skill}. "
+                f"I now have {context_count} messages saved for context {message.context_id}."
+            )
             return "info", response, ["planner"]
 
         if action == "delegate":
             reason = "I reviewed the update and split work for specialists"
-            response = f"{reason}. Recon, collect evidence first for: {message.content}"
+            response = f"{reason}. Skill used: {chosen_skill}. Recon, collect evidence first for: {message.content}"
             return "task", response, ["recon"]
 
         role = self.profile.role
         if role == "planner":
             reason = "I created a human-style plan with clear role boundaries"
-            response = f"{reason}. Recon first: gather facts for task -> {message.content}"
+            response = f"{reason}. Skill used: {chosen_skill}. Recon first: gather facts for task -> {message.content}"
             return "task", response, ["recon"]
         if role == "recon":
             reason = "I checked recent context and prepared unique discovery work"
-            response = f"{reason}. Executor, use these findings to run the next safe step for: {message.content}"
+            response = (
+                f"{reason}. Skill used: {chosen_skill}. "
+                f"Executor, use these findings to run the next safe step for: {message.content}"
+            )
             return "task", response, ["executor"]
         if role == "executor":
             reason = "I can execute this planned step without repeating previous work"
-            response = f"{reason}. Reviewer, validate the execution outcome for: {message.content}"
+            response = (
+                f"{reason}. Skill used: {chosen_skill}. "
+                f"Reviewer, validate the execution outcome for: {message.content}"
+            )
             return "info", response, ["reviewer", "memory"]
         if role == "reviewer":
             reason = "I validated the plan against recent context"
-            response = f"{reason}. Feedback: keep scope tight, avoid duplicate actions, and confirm each result."
+            response = (
+                f"{reason}. Skill used: {chosen_skill}. "
+                "Feedback: keep scope tight, avoid duplicate actions, and confirm each result."
+            )
             return "feedback", response, ["planner", "memory"]
         if role == "memory":
             reason = "I checked long-term notes to avoid repetition"
-            response = f"{reason}. Linked this update to context {message.context_id} for future turns."
+            response = (
+                f"{reason}. Skill used: {chosen_skill}. "
+                f"Linked this update to context {message.context_id} for future turns."
+            )
             return "info", response, ["planner"]
 
         return None
@@ -305,11 +343,31 @@ def build_default_agent_team() -> List[CommunicatingAgent]:
     """Factory for a practical starter team aligned with CortexSec workflow."""
 
     profiles = [
-        RoleProfile("planner", "🧭", ("Break goals into tasks", "Route tasks")),
-        RoleProfile("recon", "🛰️", ("Gather context", "Share discovery")),
-        RoleProfile("executor", "⚙️", ("Execute concrete steps", "Report progress")),
-        RoleProfile("reviewer", "✅", ("Quality checks", "Give feedback")),
-        RoleProfile("memory", "🧠", ("Persist context", "Prevent repetition")),
+        RoleProfile("planner", "🧭", ("Break goals into tasks", "Route tasks"), skills_for_role("planner")),
+        RoleProfile(
+            "recon",
+            "🛰️",
+            ("Gather context", "Share discovery"),
+            skills_for_role("recon"),
+        ),
+        RoleProfile(
+            "executor",
+            "⚙️",
+            ("Execute concrete steps", "Report progress"),
+            skills_for_role("executor"),
+        ),
+        RoleProfile(
+            "reviewer",
+            "✅",
+            ("Quality checks", "Give feedback"),
+            skills_for_role("reviewer"),
+        ),
+        RoleProfile(
+            "memory",
+            "🧠",
+            ("Persist context", "Prevent repetition"),
+            skills_for_role("memory"),
+        ),
     ]
 
     return [

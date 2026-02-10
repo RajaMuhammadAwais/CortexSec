@@ -113,7 +113,11 @@ def test_turn_lock_prevents_parallel_processing():
 
 
 def test_can_receive_by_name_role_and_all():
-    planner = CommunicatingAgent("Planner", RoleProfile("planner", "🧭", ("Plan",)), delay_range=(0.0, 0.0))
+    planner = CommunicatingAgent(
+        "Planner",
+        RoleProfile("planner", "🧭", ("Plan",), ("Threat Modeling",)),
+        delay_range=(0.0, 0.0),
+    )
 
     msg_by_name = AgentMessage("User", ["Planner"], "task", "run", datetime.now(), "ctx", 1)
     msg_by_role = AgentMessage("User", ["planner"], "task", "run", datetime.now(), "ctx", 2)
@@ -175,3 +179,21 @@ def test_deadlock_recovery_injects_system_replan_message():
     ]
     assert system_msgs
     assert any("stalled" in m.content.lower() for m in system_msgs)
+
+
+def test_default_team_has_skills_for_each_agent_role():
+    team = build_default_agent_team()
+
+    for agent in team:
+        assert agent.profile.skills
+        assert len(agent.profile.skills) >= 3
+
+
+def test_agent_response_mentions_skill_used():
+    orchestrator = CommunicationOrchestrator(_fast_team(), bus=MessageBus())
+    orchestrator.send("User", ["planner"], "task", "Create plan", "ctx-skills")
+
+    response = orchestrator.process_next_turn()
+
+    assert response is not None
+    assert "Skill used:" in response.content
