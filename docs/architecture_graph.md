@@ -41,43 +41,59 @@ flowchart LR
 ## 3) Layered Architecture View
 
 ```mermaid
-flowchart TB
-    subgraph L1[Interface Layer]
-        UI[CLI / API]
+graph TD
+    subgraph Experience_Layer [Experience Layer]
+        UI[User Interface / CLI / API]
     end
 
-    subgraph L2[Coordination Layer]
-        ORCH[Orchestrator]
-        PLAN[Planning]
+    subgraph Orchestration_Layer [Orchestration Layer]
+        ORC[Orchestrator Agent]
+        PLN[Planner Agent]
     end
 
-    subgraph L3[Assessment Layer]
-        RECON[Recon]
-        ANALYSIS[Analysis]
-        VALIDATE[Validation]
+    subgraph Execution_Layer [Research Execution Layer]
+        REC[Recon Agent]
+        ANA[Analysis Agent]
+        VAL[Exploit Validation Agent]
     end
 
-    subgraph L4[Knowledge Layer]
+    subgraph Knowledge_Layer [Knowledge & Memory Layer]
         MEM[(Session Memory)]
-        FIND[(Findings & Evidence)]
-        POL[(Policy Guardrails)]
+        FS[(Findings Store)]
+        POL{Policy / Guardrails}
     end
 
-    subgraph L5[Execution Layer]
-        TOOLS[Terminal & Security Tools]
-        TARGETS[(Authorized Targets)]
+    subgraph Infrastructure_Layer [Infrastructure Layer]
+        TOOL[Local Tools & Shell]
+        TGT[External Targets / Repos / APIs]
     end
 
-    UI --> ORCH
-    ORCH --> PLAN
-    PLAN --> RECON --> ANALYSIS --> VALIDATE
-    VALIDATE --> FIND
-    ANALYSIS --> FIND
-    ORCH <--> MEM
-    ORCH --> POL
-    RECON --> TOOLS
-    ANALYSIS --> TOOLS
-    VALIDATE --> TOOLS --> TARGETS
+    %% Connections
+    UI <--> ORC
+    ORC <--> PLN
+    ORC <--> POL
+    ORC <--> MEM
+
+    PLN --> REC
+    PLN --> ANA
+    PLN --> VAL
+
+    REC & ANA & VAL --> FS
+    REC & ANA & VAL <--> TOOL
+
+    TOOL <--> TGT
+
+    %% Reporting Flow
+    REP[Report Generation Agent]
+    FS --> REP
+    REP --> UI
+
+    %% Styling
+    style Experience_Layer fill:#f5f5f5,stroke:#333,stroke-width:2px
+    style Orchestration_Layer fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    style Execution_Layer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Knowledge_Layer fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
+    style Infrastructure_Layer fill:#eceff1,stroke:#455a64,stroke-width:2px
 ```
 
 ## 4) End-to-End Evidence Lifecycle
