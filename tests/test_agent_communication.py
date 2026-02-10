@@ -28,6 +28,16 @@ def test_planning_happens_first_before_other_agents_work():
     assert first.sender == "Planner"
 
 
+def test_planner_is_forced_first_even_if_not_initial_receiver():
+    orchestrator = CommunicationOrchestrator(_fast_team(), bus=MessageBus())
+
+    orchestrator.send("User", ["recon"], "task", "start security assessment", "ctx-force-planner")
+    first = orchestrator.process_next_turn()
+
+    assert first is not None
+    assert first.sender == "Planner"
+
+
 def test_message_bus_and_orchestrator_turn_flow():
     orchestrator = CommunicationOrchestrator(_fast_team(), bus=MessageBus())
 
