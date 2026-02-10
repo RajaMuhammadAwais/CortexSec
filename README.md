@@ -55,6 +55,7 @@ All without destructive actions. Perfect for **security researchers**, **penetra
 - [Usage](#-usage--running-security-assessments)
 - [Reports](#-generated-security-reports)
 - [Release Notes](#-release--versioning)
+- [Contributing](#-resources--community)
 - [Legal Disclaimer](#-legal-disclaimer)
 
 ---
