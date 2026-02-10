@@ -53,3 +53,17 @@ def test_command_executor_handles_empty_command():
     result = CommandExecutor().run(context, "")
     assert result.exit_code == 2
     assert result.stderr == "invalid-command:empty"
+
+
+def test_safety_gate_blocks_rm_without_leading_space():
+    context = PentestContext(target="https://example.com", mode="authorized")
+    decision = SafetyGate.evaluate(context, "rm -rf /tmp/test")
+    assert decision["allowed"] is False
+    assert decision["reason"] == "destructive-command-pattern"
+
+
+def test_safety_gate_blocks_command_chaining():
+    context = PentestContext(target="https://example.com", mode="authorized")
+    decision = SafetyGate.evaluate(context, "echo hello && uname -a")
+    assert decision["allowed"] is False
+    assert decision["reason"] == "command-chaining-not-allowed"
