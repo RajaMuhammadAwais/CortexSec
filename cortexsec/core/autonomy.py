@@ -3,7 +3,6 @@ from __future__ import annotations
 import shlex
 import subprocess
 import time
-import platform
 from datetime import datetime, timezone
 from typing import Dict, Any, List
 
@@ -60,10 +59,26 @@ class SafetyGate:
             return {"allowed": False, "reason": "destructive-mode-enabled"}
 
         cmd_lower = command.lower()
-        blocked_tokens = [" rm ", " mkfs", "shutdown", "reboot", " dd "]
-        padded = f" {cmd_lower} "
-        if any(token in padded for token in blocked_tokens):
+        blocked_patterns = ["shutdown", "reboot", "mkfs", "format", "fdisk", "dd if="]
+        if any(pattern in cmd_lower for pattern in blocked_patterns):
             return {"allowed": False, "reason": "destructive-command-pattern"}
+
+        try:
+            argv = shlex.split(command)
+        except ValueError:
+            return {"allowed": False, "reason": "invalid-command"}
+
+        if not argv:
+            return {"allowed": False, "reason": "invalid-command"}
+
+        destructive_commands = {"rm", "del", "deltree", "rmdir", "erase", "chmod", "chown"}
+        for token in argv:
+            normalized = token.strip().lower()
+            if normalized in destructive_commands:
+                return {"allowed": False, "reason": "destructive-command-pattern"}
+
+            if normalized in {"&&", "||", ";", "|"}:
+                return {"allowed": False, "reason": "command-chaining-not-allowed"}
 
         return {"allowed": True, "reason": "ok"}
 
@@ -78,6 +93,15 @@ class CommandExecutor:
         gate = SafetyGate.evaluate(context, command)
         now = datetime.now(timezone.utc).isoformat()
         if not gate["allowed"]:
+            if gate["reason"] == "invalid-command":
+                return ExecutorOutput(
+                    command=command,
+                    exit_code=2,
+                    stdout="",
+                    stderr="invalid-command:empty",
+                    duration_ms=0,
+                    timestamp_utc=now,
+                )
             return ExecutorOutput(
                 command=command,
                 exit_code=126,
@@ -106,7 +130,7 @@ class CommandExecutor:
                 text=True,
                 timeout=self.timeout_seconds,
                 check=False,
-                shell=platform.system() == "Windows",
+                shell=False,
             )
             duration = int((time.perf_counter() - started) * 1000)
             return ExecutorOutput(
