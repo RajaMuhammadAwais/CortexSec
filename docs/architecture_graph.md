@@ -2,7 +2,7 @@
 
 This architecture maps CortexSec agent roles to a professional, research-based security testing lifecycle (OWASP WSTG, NIST SP 800-115, PTES, CVSS, and MITRE ATT&CK).
 
-## 1) Visualized Professional Agent Types
+## 1) Visualized Agent Types
 
 ```mermaid
 flowchart LR
