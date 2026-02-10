@@ -64,13 +64,33 @@ class SupervisorAgent(BaseAgent):
             ("Risk Assessment", "RiskAgent"),
             ("Attack Simulation Planning", "AttackSimulationAgent"),
             ("Memory Update", "MemoryAgent"),
+            ("Competitive Roadmap Planning", "CompetitivePlanningAgent"),
             ("Remediation Planning", "RemediationAdvisor"),
         ]
         if focus == "discovery":
             return base
         if focus == "validation":
-            return [base[4], base[5], base[6], base[7], base[8], base[9], base[10], base[11], base[13], base[15]]
-        return [base[7], base[8], base[9], base[10], base[11], base[13], base[15]]
+            return [base[4], base[5], base[6], base[7], base[8], base[9], base[10], base[11], base[13], base[14], base[15]]
+        return [base[7], base[8], base[9], base[10], base[11], base[13], base[14], base[15]]
+
+
+    def _should_extend_for_missing_findings(self, context: PentestContext, cycle: int, dynamic_max_cycles: int) -> bool:
+        if not context.require_findings_before_stop:
+            return False
+
+        findings_count = len(context.findings)
+        max_extensions = max(0, int(context.max_no_finding_extensions))
+        used_extensions = int(context.memory.get("no_finding_extensions_used", 0))
+
+        if findings_count > 0 or used_extensions >= max_extensions:
+            return False
+
+        context.memory["no_finding_extensions_used"] = used_extensions + 1
+        self.log(
+            f"No validated findings after cycle {cycle}; extending search cycle "
+            f"({used_extensions + 1}/{max_extensions})."
+        )
+        return True
 
     def _update_metrics(self, context: PentestContext, cycle: int, stable_cycles: int, prev_metrics: dict):
         findings = context.findings
@@ -144,6 +164,7 @@ class SupervisorAgent(BaseAgent):
         auto_extensions_used = 0
 
         context.memory.setdefault("agent_recovery_log", [])
+        context.memory.setdefault("no_finding_extensions_used", 0)
 
         with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), transient=True) as progress:
             cycle = 1
@@ -225,12 +246,17 @@ class SupervisorAgent(BaseAgent):
                         f"({auto_extensions_used}/{self.max_auto_extensions})."
                     )
                 elif converged and not context.continuous_improvement:
-                    context.stop_reason = (
-                        f"Stopped at cycle {cycle}: security knowledge converged with all reachable findings analyzed "
-                        f"(confidence={m['avg_confidence']}, coverage={m['coverage_score']}, causal={m['causal_completeness']}, "
-                        f"exploitability={m['min_exploitability_confidence']}, analyzed={m['analyzed_reachable_findings']}/{m['reachable_findings']})."
-                    )
-                    break
+                    if self._should_extend_for_missing_findings(context, cycle, dynamic_max_cycles):
+                        dynamic_max_cycles += 1
+                    else:
+                        context.stop_reason = (
+                            f"Stopped at cycle {cycle}: security knowledge converged with all reachable findings analyzed "
+                            f"(confidence={m['avg_confidence']}, coverage={m['coverage_score']}, causal={m['causal_completeness']}, "
+                            f"exploitability={m['min_exploitability_confidence']}, analyzed={m['analyzed_reachable_findings']}/{m['reachable_findings']})."
+                        )
+                        break
+                elif self._should_extend_for_missing_findings(context, cycle, dynamic_max_cycles):
+                    dynamic_max_cycles += 1
 
                 cycle += 1
 
