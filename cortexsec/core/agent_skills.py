@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Tuple
+from typing import Dict, Set, Tuple
 
 
 @dataclass(frozen=True)
@@ -43,3 +43,19 @@ SKILL_CATALOG: Dict[str, Tuple[AgentSkill, ...]] = {
 def skills_for_role(role: str) -> Tuple[str, ...]:
     """Return skill names for a role."""
     return tuple(skill.name for skill in SKILL_CATALOG.get(role, ()))
+
+
+def validate_unique_role_skills() -> None:
+    """Ensure each role owns distinct skill names to avoid role-overlap confusion."""
+    seen: Set[str] = set()
+    duplicates: Set[str] = set()
+
+    for role in SKILL_CATALOG:
+        for skill in skills_for_role(role):
+            if skill in seen:
+                duplicates.add(skill)
+            seen.add(skill)
+
+    if duplicates:
+        duplicate_list = ", ".join(sorted(duplicates))
+        raise ValueError(f"Duplicate skills found across roles: {duplicate_list}")

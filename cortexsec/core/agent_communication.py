@@ -7,7 +7,7 @@ from typing import Deque, Dict, Iterable, List, Optional, Set, Tuple
 import random
 import time
 
-from cortexsec.core.agent_skills import skills_for_role
+from cortexsec.core.agent_skills import skills_for_role, validate_unique_role_skills
 
 
 VALID_INTENTS = {"question", "task", "info", "feedback"}
@@ -341,6 +341,8 @@ class CommunicationOrchestrator:
 
 def build_default_agent_team() -> List[CommunicatingAgent]:
     """Factory for a practical starter team aligned with CortexSec workflow."""
+
+    validate_unique_role_skills()
 
     profiles = [
         RoleProfile("planner", "🧭", ("Break goals into tasks", "Route tasks"), skills_for_role("planner")),

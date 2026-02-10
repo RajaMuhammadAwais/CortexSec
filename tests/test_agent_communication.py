@@ -8,6 +8,7 @@ from cortexsec.core.agent_communication import (
     RoleProfile,
     build_default_agent_team,
 )
+from cortexsec.core.agent_skills import SKILL_CATALOG, validate_unique_role_skills
 
 
 def _fast_team():
@@ -187,6 +188,17 @@ def test_default_team_has_skills_for_each_agent_role():
     for agent in team:
         assert agent.profile.skills
         assert len(agent.profile.skills) >= 3
+
+
+def test_each_role_has_unique_skills_across_catalog():
+    validate_unique_role_skills()
+
+    all_skills = []
+    for role, skills in SKILL_CATALOG.items():
+        assert skills, f"missing skills for role {role}"
+        all_skills.extend(skill.name for skill in skills)
+
+    assert len(all_skills) == len(set(all_skills))
 
 
 def test_agent_response_mentions_skill_used():
