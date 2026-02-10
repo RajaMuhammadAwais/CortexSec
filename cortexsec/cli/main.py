@@ -1,6 +1,7 @@
 import typer
 from rich.console import Console
 from dotenv import load_dotenv
+from typer import Context
 from cortexsec.llm.factory import create_llm
 from cortexsec.core.agent import PentestContext
 from cortexsec.core.planner import SupervisorAgent
@@ -20,10 +21,62 @@ from cortexsec.agents.attack_simulation import AttackSimulationAgent
 from cortexsec.agents.memory_agent import MemoryAgent
 from cortexsec.agents.remediation_advisor import RemediationAdvisor
 from cortexsec.agents.report_agent import ReportAgent
+from cortexsec.core.agent_communication import CommunicationOrchestrator, build_default_agent_team
 
 load_dotenv()
 console = Console()
 app = typer.Typer(name="cortexsec", help="CortexSec - Autonomous AI Security Assessment Agent")
+
+
+@app.callback(invoke_without_command=True)
+def main(
+    ctx: Context,
+    target: str = typer.Option(None, "--target", "-t", help="Target URL or IP"),
+    mode: str = typer.Option("lab", "--mode", "-m", help="Assessment mode (lab/authorized)"),
+    provider: str = typer.Option("openai", "--provider", help="LLM provider: openai/claude/gemini/deepseek"),
+    model: str = typer.Option("", "--model", help="LLM model name (optional)"),
+    api_key: str = typer.Option(None, "--api-key", help="LLM API Key"),
+    max_cycles: int = typer.Option(5, "--max-cycles", help="Maximum autonomous reasoning cycles"),
+    confidence_threshold: float = typer.Option(0.8, "--confidence-threshold", help="Stop when avg finding confidence reaches this"),
+    coverage_threshold: float = typer.Option(0.8, "--coverage-threshold", help="Stop when coverage score reaches this"),
+    causal_threshold: float = typer.Option(1.0, "--causal-threshold", help="Stop when attack-graph causal completeness reaches this"),
+    exploitability_threshold: float = typer.Option(0.75, "--exploitability-threshold", help="Minimum exploitability confidence required across reachable findings"),
+    min_stable_cycles: int = typer.Option(1, "--min-stable-cycles", help="Require this many cycles with no new findings before stopping"),
+    continuous_improvement: bool = typer.Option(False, "--continuous-improvement", help="Keep refining even after convergence by extending extra cycles"),
+    max_auto_extensions: int = typer.Option(2, "--max-auto-extensions", help="Maximum extra cycles when continuous improvement is enabled"),
+    retry_failed_agents: int = typer.Option(1, "--retry-failed-agents", help="Retries per agent when a cycle step fails"),
+    vuln_refinement_rounds: int = typer.Option(2, "--vuln-refinement-rounds", help="Extra research-style refinement rounds in vulnerability analysis"),
+    live_attack_graph: bool = typer.Option(False, "--live-attack-graph", help="Render live attack-graph progress per cycle"),
+    pro_user: bool = typer.Option(False, "--pro-user", help="Enable pro workflow features"),
+    destructive_mode: bool = typer.Option(False, "--destructive-mode", help="Pro-only: generate destructive test plans (execution is blocked by safety policy)"),
+):
+    """Backward-compatible entrypoint: allow running start options without explicit subcommand."""
+    if ctx.invoked_subcommand is not None:
+        return
+
+    if target is None:
+        return
+
+    start(
+        target=target,
+        mode=mode,
+        provider=provider,
+        model=model,
+        api_key=api_key,
+        max_cycles=max_cycles,
+        confidence_threshold=confidence_threshold,
+        coverage_threshold=coverage_threshold,
+        causal_threshold=causal_threshold,
+        exploitability_threshold=exploitability_threshold,
+        min_stable_cycles=min_stable_cycles,
+        continuous_improvement=continuous_improvement,
+        max_auto_extensions=max_auto_extensions,
+        retry_failed_agents=retry_failed_agents,
+        vuln_refinement_rounds=vuln_refinement_rounds,
+        live_attack_graph=live_attack_graph,
+        pro_user=pro_user,
+        destructive_mode=destructive_mode,
+    )
 
 
 @app.command()
@@ -126,6 +179,19 @@ def start(
     )
     console.print(f"Stop Reason: {final_context.stop_reason}")
     console.print("Check the 'reports' directory for the final report.")
+
+
+@app.command("agent-chat")
+def agent_chat(
+    prompt: str = typer.Option(..., "--prompt", "-p", help="Task prompt for the agent team"),
+    context_id: str = typer.Option("session-1", "--context-id", help="Conversation context identifier"),
+    max_turns: int = typer.Option(12, "--max-turns", help="Maximum turn-based exchanges"),
+):
+    """Run a CLI demo of the real-time turn-based communication layer."""
+    orchestrator = CommunicationOrchestrator(build_default_agent_team())
+    console.print("[bold blue]Starting multi-agent communication demo[/bold blue]")
+    orchestrator.run_session(user_prompt=prompt, context_id=context_id, max_turns=max_turns)
+
 
 
 if __name__ == "__main__":
