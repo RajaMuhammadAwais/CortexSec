@@ -1,32 +1,55 @@
 import typer
-from rich.console import Console
 from dotenv import load_dotenv
+from rich.console import Console
 from typer import Context
-from cortexsec.llm.factory import create_llm
-from cortexsec.core.agent import PentestContext
-from cortexsec.core.planner import SupervisorAgent
-from cortexsec.agents.recon import ReconAgent
-from cortexsec.agents.attack_surface_agent import AttackSurfaceAgent
-from cortexsec.agents.web_app_scanner import WebAppScannerAgent
-from cortexsec.agents.browser_autonomous_agent import BrowserAutonomousAgent
-from cortexsec.agents.payload_agent import PayloadAgent
-from cortexsec.agents.vuln_analysis import VulnAnalysisAgent
-from cortexsec.agents.network_analyzer import NetworkAnalyzer
-from cortexsec.agents.autonomous_exploit_agent import AutonomousExploitationAgent
-from cortexsec.agents.zero_day_detector import ZeroDayDetector
-from cortexsec.agents.reasoning_agent import ReasoningAgent
-from cortexsec.agents.exploitability_agent import ExploitabilityAgent
-from cortexsec.agents.risk_agent import RiskAgent
-from cortexsec.agents.attack_simulation import AttackSimulationAgent
-from cortexsec.agents.memory_agent import MemoryAgent
-from cortexsec.agents.competitive_planning_agent import CompetitivePlanningAgent
-from cortexsec.agents.remediation_advisor import RemediationAdvisor
-from cortexsec.agents.report_agent import ReportAgent
+
+from cortexsec.api.contracts import AssessmentRequest
+from cortexsec.app.config import AppConfig
+from cortexsec.app.logging_config import configure_structured_logging
 from cortexsec.core.agent_communication import CommunicationOrchestrator, build_default_agent_team
+from cortexsec.engine.cli_engine import CliEngine
 
 load_dotenv()
 console = Console()
 app = typer.Typer(name="cortexsec", help="CortexSec - Autonomous AI Security Assessment Agent")
+
+
+def _validate_log_level(value: str) -> str:
+    normalized = (value or "basic").lower().strip()
+    if normalized not in {"basic", "detailed", "forensic"}:
+        raise typer.BadParameter("--log-level must be one of: basic, detailed, forensic")
+    return normalized
+
+
+def _build_request(
+    target: str,
+    mode: str,
+    provider: str,
+    llm_provider: str,
+    model: str,
+    model_path: str,
+    api_key: str | None,
+    max_cycles: int,
+    sandboxed: bool,
+    sandbox_image: str,
+    enable_external_tools: bool,
+    log_level: str,
+    anonymize_logs: bool,
+) -> AssessmentRequest:
+    return AssessmentRequest(
+        target=target,
+        mode=mode,
+        provider=llm_provider or provider,
+        model=model,
+        model_path=model_path,
+        api_key=api_key,
+        max_cycles=max_cycles,
+        sandboxed=sandboxed,
+        sandbox_image=sandbox_image,
+        enable_external_tools=enable_external_tools,
+        log_level=log_level,
+        anonymize_logs=anonymize_logs,
+    )
 
 
 @app.callback(invoke_without_command=True)
@@ -34,51 +57,37 @@ def main(
     ctx: Context,
     target: str = typer.Option(None, "--target", "-t", help="Target URL or IP"),
     mode: str = typer.Option("lab", "--mode", "-m", help="Assessment mode (lab/authorized)"),
-    provider: str = typer.Option("openai", "--provider", help="LLM provider: openai/claude/gemini/deepseek"),
-    model: str = typer.Option("", "--model", help="LLM model name (optional)"),
-    api_key: str = typer.Option(None, "--api-key", help="LLM API Key"),
-    max_cycles: int = typer.Option(5, "--max-cycles", help="Maximum autonomous reasoning cycles"),
-    confidence_threshold: float = typer.Option(0.8, "--confidence-threshold", help="Stop when avg finding confidence reaches this"),
-    coverage_threshold: float = typer.Option(0.8, "--coverage-threshold", help="Stop when coverage score reaches this"),
-    causal_threshold: float = typer.Option(1.0, "--causal-threshold", help="Stop when attack-graph causal completeness reaches this"),
-    exploitability_threshold: float = typer.Option(0.75, "--exploitability-threshold", help="Minimum exploitability confidence required across reachable findings"),
-    min_stable_cycles: int = typer.Option(1, "--min-stable-cycles", help="Require this many cycles with no new findings before stopping"),
-    continuous_improvement: bool = typer.Option(False, "--continuous-improvement", help="Keep refining even after convergence by extending extra cycles"),
-    require_findings_before_stop: bool = typer.Option(False, "--require-findings-before-stop", help="Keep extending bounded research cycles until at least one validated finding exists"),
-    max_no_finding_extensions: int = typer.Option(3, "--max-no-finding-extensions", help="Maximum bounded extensions when no validated findings are present"),
-    max_auto_extensions: int = typer.Option(2, "--max-auto-extensions", help="Maximum extra cycles when continuous improvement is enabled"),
-    retry_failed_agents: int = typer.Option(1, "--retry-failed-agents", help="Retries per agent when a cycle step fails"),
-    vuln_refinement_rounds: int = typer.Option(2, "--vuln-refinement-rounds", help="Extra research-style refinement rounds in vulnerability analysis"),
-    live_attack_graph: bool = typer.Option(False, "--live-attack-graph", help="Render live attack-graph progress per cycle"),
-    pro_user: bool = typer.Option(False, "--pro-user", help="Enable pro workflow features"),
-    destructive_mode: bool = typer.Option(False, "--destructive-mode", help="Pro-only: generate destructive test plans (execution is blocked by safety policy)"),
+    provider: str = typer.Option("openai", "--provider", help="LLM provider"),
+    llm_provider: str = typer.Option("", "--llm-provider", help="Alias to --provider"),
+    model: str = typer.Option("", "--model", help="LLM model name"),
+    model_path: str = typer.Option("", "--model-path", help="Path to local GGUF model"),
+    api_key: str = typer.Option(None, "--api-key", help="LLM API key"),
+    max_cycles: int = typer.Option(5, "--max-cycles"),
+    sandboxed: bool = typer.Option(False, "--sandboxed", help="Run with docker sandbox guard"),
+    sandbox_image: str = typer.Option("cortexsec/sandbox:latest", "--sandbox-image"),
+    enable_external_tools: bool = typer.Option(False, "--enable-external-tools"),
+    log_level: str = typer.Option("basic", "--log-level", help="basic|detailed|forensic"),
+    anonymize_logs: bool = typer.Option(False, "--anonymize-logs"),
+    pro_user: bool = typer.Option(False, "--pro-user"),
+    destructive_mode: bool = typer.Option(False, "--destructive-mode"),
 ):
-    """Backward-compatible entrypoint: allow running start options without explicit subcommand."""
-    if ctx.invoked_subcommand is not None:
-        return
-
-    if target is None:
+    if ctx.invoked_subcommand is not None or target is None:
         return
 
     start(
         target=target,
         mode=mode,
         provider=provider,
+        llm_provider=llm_provider,
         model=model,
+        model_path=model_path,
         api_key=api_key,
         max_cycles=max_cycles,
-        confidence_threshold=confidence_threshold,
-        coverage_threshold=coverage_threshold,
-        causal_threshold=causal_threshold,
-        exploitability_threshold=exploitability_threshold,
-        min_stable_cycles=min_stable_cycles,
-        continuous_improvement=continuous_improvement,
-        require_findings_before_stop=require_findings_before_stop,
-        max_no_finding_extensions=max_no_finding_extensions,
-        max_auto_extensions=max_auto_extensions,
-        retry_failed_agents=retry_failed_agents,
-        vuln_refinement_rounds=vuln_refinement_rounds,
-        live_attack_graph=live_attack_graph,
+        sandboxed=sandboxed,
+        sandbox_image=sandbox_image,
+        enable_external_tools=enable_external_tools,
+        log_level=log_level,
+        anonymize_logs=anonymize_logs,
         pro_user=pro_user,
         destructive_mode=destructive_mode,
     )
@@ -88,107 +97,61 @@ def main(
 def start(
     target: str = typer.Option(..., "--target", "-t", help="Target URL or IP"),
     mode: str = typer.Option("lab", "--mode", "-m", help="Assessment mode (lab/authorized)"),
-    provider: str = typer.Option("openai", "--provider", help="LLM provider: openai/claude/gemini/deepseek"),
-    model: str = typer.Option("", "--model", help="LLM model name (optional)"),
-    api_key: str = typer.Option(None, "--api-key", help="LLM API Key"),
-    max_cycles: int = typer.Option(5, "--max-cycles", help="Maximum autonomous reasoning cycles"),
-    confidence_threshold: float = typer.Option(0.8, "--confidence-threshold", help="Stop when avg finding confidence reaches this"),
-    coverage_threshold: float = typer.Option(0.8, "--coverage-threshold", help="Stop when coverage score reaches this"),
-    causal_threshold: float = typer.Option(1.0, "--causal-threshold", help="Stop when attack-graph causal completeness reaches this"),
-    exploitability_threshold: float = typer.Option(0.75, "--exploitability-threshold", help="Minimum exploitability confidence required across reachable findings"),
-    min_stable_cycles: int = typer.Option(1, "--min-stable-cycles", help="Require this many cycles with no new findings before stopping"),
-    continuous_improvement: bool = typer.Option(False, "--continuous-improvement", help="Keep refining even after convergence by extending extra cycles"),
-    require_findings_before_stop: bool = typer.Option(False, "--require-findings-before-stop", help="Keep extending bounded research cycles until at least one validated finding exists"),
-    max_no_finding_extensions: int = typer.Option(3, "--max-no-finding-extensions", help="Maximum bounded extensions when no validated findings are present"),
-    max_auto_extensions: int = typer.Option(2, "--max-auto-extensions", help="Maximum extra cycles when continuous improvement is enabled"),
-    retry_failed_agents: int = typer.Option(1, "--retry-failed-agents", help="Retries per agent when a cycle step fails"),
-    vuln_refinement_rounds: int = typer.Option(2, "--vuln-refinement-rounds", help="Extra research-style refinement rounds in vulnerability analysis"),
-    live_attack_graph: bool = typer.Option(False, "--live-attack-graph", help="Render live attack-graph progress per cycle"),
-    pro_user: bool = typer.Option(False, "--pro-user", help="Enable pro workflow features"),
-    destructive_mode: bool = typer.Option(False, "--destructive-mode", help="Pro-only: generate destructive test plans (execution is blocked by safety policy)"),
+    provider: str = typer.Option("openai", "--provider", help="LLM provider"),
+    llm_provider: str = typer.Option("", "--llm-provider", help="Alias to --provider"),
+    model: str = typer.Option("", "--model", help="LLM model name"),
+    model_path: str = typer.Option("", "--model-path", help="Path to local GGUF model"),
+    api_key: str = typer.Option(None, "--api-key", help="LLM API key"),
+    max_cycles: int = typer.Option(5, "--max-cycles"),
+    sandboxed: bool = typer.Option(False, "--sandboxed", help="Run with docker sandbox guard"),
+    sandbox_image: str = typer.Option("cortexsec/sandbox:latest", "--sandbox-image"),
+    enable_external_tools: bool = typer.Option(False, "--enable-external-tools"),
+    log_level: str = typer.Option("basic", "--log-level", help="basic|detailed|forensic"),
+    anonymize_logs: bool = typer.Option(False, "--anonymize-logs"),
+    pro_user: bool = typer.Option(False, "--pro-user"),
+    destructive_mode: bool = typer.Option(False, "--destructive-mode"),
 ):
-    """Start a fully autonomous security assessment."""
-    console.print(f"[bold blue]Starting AI Security Assessment for:[/bold blue] {target}")
-    console.print(f"[bold yellow]Mode:[/bold yellow] {mode}")
-
     if mode == "lab" and not (target.startswith("http://localhost") or "127.0.0.1" in target):
         console.print("[bold red]Error: Lab mode only supports localhost targets.[/bold red]")
         raise typer.Exit(code=1)
-
 
     if destructive_mode and not pro_user:
         console.print("[bold red]Error:[/bold red] --destructive-mode requires --pro-user.")
         raise typer.Exit(code=1)
 
-    if destructive_mode:
-        console.print("[bold yellow]Safety:[/bold yellow] Destructive mode is planning-only in CortexSec. No destructive payloads are executed automatically.")
+    normalized_log_level = _validate_log_level(log_level)
 
-    try:
-        llm = create_llm(provider=provider, model=model, api_key=api_key)
-    except ValueError as e:
-        console.print(f"[bold red]Error:[/bold red] {str(e)}")
-        raise typer.Exit(code=1)
+    cfg = AppConfig.from_file_and_env()
+    configure_structured_logging(cfg.log_dir)
 
-    agents = [
-        ReconAgent(llm),
-        AttackSurfaceAgent(llm),
-        WebAppScannerAgent(llm),
-        BrowserAutonomousAgent(llm),
-        PayloadAgent(llm),
-        VulnAnalysisAgent(llm, refinement_rounds=vuln_refinement_rounds),
-        NetworkAnalyzer(llm),
-        AutonomousExploitationAgent(llm),
-        ZeroDayDetector(llm),
-        ReasoningAgent(llm),
-        ExploitabilityAgent(llm),
-        RiskAgent(llm),
-        AttackSimulationAgent(llm),
-        MemoryAgent(llm),
-        CompetitivePlanningAgent(llm),
-        RemediationAdvisor(llm),
-        ReportAgent(llm),
-    ]
-
-    supervisor = SupervisorAgent(
-        llm,
-        agents,
-        max_cycles=max_cycles,
-        confidence_threshold=confidence_threshold,
-        coverage_threshold=coverage_threshold,
-        causal_threshold=causal_threshold,
-        exploitability_threshold=exploitability_threshold,
-        min_stable_cycles=min_stable_cycles,
-        max_auto_extensions=max_auto_extensions,
-        retry_failed_agents=retry_failed_agents,
-        live_attack_graph=live_attack_graph,
-    )
-
-    context = PentestContext(
+    request = _build_request(
         target=target,
         mode=mode,
-        continuous_improvement=continuous_improvement,
-        require_findings_before_stop=require_findings_before_stop,
-        max_no_finding_extensions=max_no_finding_extensions,
-        pro_user=pro_user,
-        destructive_mode=destructive_mode,
+        provider=provider,
+        llm_provider=llm_provider,
+        model=model,
+        model_path=model_path,
+        api_key=api_key,
+        max_cycles=max_cycles,
+        sandboxed=sandboxed,
+        sandbox_image=sandbox_image,
+        enable_external_tools=enable_external_tools,
+        log_level=normalized_log_level,
+        anonymize_logs=anonymize_logs,
     )
-    final_context = supervisor.run(context)
+
+    result = CliEngine().run(request)
+
+    if result.status != "ok":
+        console.print(f"[bold red]Assessment failed:[/bold red] {result.stop_reason}")
+        raise typer.Exit(code=1)
 
     console.print("\n[bold green]Assessment Complete![/bold green]")
-    console.print(f"Total Findings: {len(final_context.findings)}")
-    console.print(f"Risk Level: {final_context.risk_summary.get('level', 'Unknown')}")
-    console.print(f"Coverage Score: {final_context.assessment_metrics.get('coverage_score', 0.0)}")
-    console.print(f"Average Confidence: {final_context.assessment_metrics.get('avg_confidence', 0.0)}")
-    console.print(f"Causal Completeness: {final_context.assessment_metrics.get('causal_completeness', 0.0)}")
-    console.print(f"Min Exploitability Confidence: {final_context.assessment_metrics.get('min_exploitability_confidence', 0.0)}")
-    console.print(f"Orchestrator Reward (last): {final_context.orchestrator_learning.get('last_reward', 0.0)}")
-    console.print(
-        f"Reachable Findings Analyzed: "
-        f"{final_context.assessment_metrics.get('analyzed_reachable_findings', 0)}/"
-        f"{final_context.assessment_metrics.get('reachable_findings', 0)}"
-    )
-    console.print(f"Stop Reason: {final_context.stop_reason}")
-    console.print("Check the 'reports' directory for the final report.")
+    console.print(f"Target: {result.target}")
+    console.print(f"Findings: {result.findings_count}")
+    console.print(f"Risk: {result.risk_level}")
+    console.print(f"Run ID: {result.run_id}")
+    console.print(f"Log file: {result.artifacts.get('log')}")
 
 
 @app.command("agent-chat")
@@ -197,11 +160,17 @@ def agent_chat(
     context_id: str = typer.Option("session-1", "--context-id", help="Conversation context identifier"),
     max_turns: int = typer.Option(12, "--max-turns", help="Maximum turn-based exchanges"),
 ):
-    """Run a CLI demo of the real-time turn-based communication layer."""
     orchestrator = CommunicationOrchestrator(build_default_agent_team())
     console.print("[bold blue]Starting multi-agent communication demo[/bold blue]")
     orchestrator.run_session(user_prompt=prompt, context_id=context_id, max_turns=max_turns)
 
+
+@app.command("gui")
+def launch_gui():
+    """Launch thin GUI wrapper over the same shared API service."""
+    from cortexsec.gui.tk_app import CortexSecGuiApp
+
+    CortexSecGuiApp().start()
 
 
 if __name__ == "__main__":
