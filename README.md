@@ -455,3 +455,46 @@ CortexSec is released under the [MIT License](LICENSE). See LICENSE file for det
 ---
 
 **Developed by [RajaMuhammadAwais](https://github.com/RajaMuhammadAwais)** | [Report Security Issues](https://github.com/RajaMuhammadAwais/CortexSec/security) | [GitHub Repository](https://github.com/RajaMuhammadAwais/CortexSec)
+
+## 🔐 Production Safety & Governance Features
+
+CortexSec now includes a production-focused execution plane designed around zero-trust principles:
+
+- **Docker sandbox mode** via `--sandboxed`
+  - Runs security operations in a constrained container image.
+  - Drops all capabilities and limits execution to mounted `/workspace`.
+  - Includes a startup guard that blocks `/etc/passwd` access checks.
+- **Forensic audit logging** via `--log-level basic|detailed|forensic`
+  - Stores replayable execution traces in `logs/<run_id>.jsonl`.
+  - Captures decisions, tool commands, prompt hashes, and risk summaries.
+  - Supports anonymization with `--anonymize-logs`.
+- **External tool adapters** (opt-in)
+  - Enable with `--enable-external-tools` to run Nmap and OWASP ZAP adapters.
+  - Nmap adapter (`cortexsec/tools/nmap_adapter.py`)
+  - OWASP ZAP adapter (`cortexsec/tools/zap_adapter.py`)
+  - Unified JSON reporting through a shared ToolManager interface.
+- **Local/offline LLM support**
+  - `--llm-provider ollama` for local Ollama inference.
+  - `--llm-provider local-gguf --model-path <path>` for GGUF/llama.cpp workflows.
+
+### Example: sandboxed run with forensic logs
+
+```bash
+cortexsec start \
+  --target http://localhost:3000 \
+  --mode authorized \
+  --sandboxed \
+  --llm-provider ollama \
+  --enable-external-tools \
+  --log-level forensic
+```
+
+### MCP-style tool invocation payload
+
+```json
+{
+  "tool": "nmap",
+  "target": "example.com",
+  "options": "-sV -Pn"
+}
+```
