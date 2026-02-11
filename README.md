@@ -498,3 +498,12 @@ cortexsec start \
   "options": "-sV -Pn"
 }
 ```
+
+## 🗺️ Technical Roadmap Update: Hybrid CLI + GUI
+
+CortexSec now tracks a formal hybrid architecture roadmap where the CLI remains the core engine and the GUI is a thin wrapper over the same API/service layer.
+
+- Roadmap details: `docs/TECHNICAL_ROADMAP.md`
+- Architecture details and folder structure: `docs/HYBRID_ARCHITECTURE.md`
+
+This approach preserves automation and scripting while enabling faster triage and onboarding through visualization-oriented GUI workflows.
