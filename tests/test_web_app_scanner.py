@@ -76,9 +76,10 @@ def test_graphql_mutations_detection(monkeypatch):
     assert any("Mutations" in f.title for f in out.findings)
 
 
-def test_jwt_none_algorithm_detection():
+def test_jwt_none_algorithm_detection(monkeypatch):
     """Test detection of JWT with 'none' algorithm."""
     context = base_context()
+    monkeypatch.setattr("requests.post", lambda *args, **kwargs: FakeResponse(status_code=404))
     
     # JWT with 'none' algorithm: eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiIxMjM0In0.
     context.recon_data["raw"]["headers"] = {
@@ -93,9 +94,10 @@ def test_jwt_none_algorithm_detection():
     assert none_finding.severity == "Critical"
 
 
-def test_jwt_missing_expiration():
+def test_jwt_missing_expiration(monkeypatch):
     """Test detection of JWT without expiration claim."""
     context = base_context()
+    monkeypatch.setattr("requests.post", lambda *args, **kwargs: FakeResponse(status_code=404))
     
     # JWT without 'exp': eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0In0.hash
     context.recon_data["raw"]["headers"] = {
@@ -108,9 +110,10 @@ def test_jwt_missing_expiration():
     assert any("Expiration" in f.title for f in out.findings)
 
 
-def test_csrf_missing_samesite():
+def test_csrf_missing_samesite(monkeypatch):
     """Test detection of missing SameSite cookie attribute."""
     context = base_context()
+    monkeypatch.setattr("requests.post", lambda *args, **kwargs: FakeResponse(status_code=404))
     context.recon_data["raw"]["headers"] = {
         "Set-Cookie": "session=abc123; Path=/; HttpOnly"
     }
@@ -123,9 +126,10 @@ def test_csrf_missing_samesite():
     assert samesite_finding.severity == "High"
 
 
-def test_session_cookie_missing_secure_flag():
+def test_session_cookie_missing_secure_flag(monkeypatch):
     """Test detection of session cookie without Secure flag."""
     context = base_context()
+    monkeypatch.setattr("requests.post", lambda *args, **kwargs: FakeResponse(status_code=404))
     context.target = "https://example.com"
     context.recon_data["raw"]["headers"] = {
         "Set-Cookie": "sessionid=abc123; Path=/; HttpOnly; SameSite=Strict"
@@ -137,9 +141,10 @@ def test_session_cookie_missing_secure_flag():
     assert any("Secure Flag" in f.title for f in out.findings)
 
 
-def test_session_cookie_missing_httponly():
+def test_session_cookie_missing_httponly(monkeypatch):
     """Test detection of session cookie without HttpOnly flag."""
     context = base_context()
+    monkeypatch.setattr("requests.post", lambda *args, **kwargs: FakeResponse(status_code=404))
     context.recon_data["raw"]["headers"] = {
         "Set-Cookie": "session=abc123; Path=/; Secure; SameSite=Strict"
     }

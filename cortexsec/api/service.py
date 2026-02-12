@@ -26,7 +26,16 @@ from cortexsec.core.audit import AuditConfig, AuditLogger
 from cortexsec.core.planner import SupervisorAgent
 from cortexsec.core.sandbox import DockerSandboxRunner
 from cortexsec.llm.factory import create_llm
-from cortexsec.plugins import NmapPlugin, PluginContext, PluginRegistry, ZapPlugin
+from cortexsec.plugins import (
+    GobusterPlugin,
+    NiktoPlugin,
+    NmapPlugin,
+    NucleiPlugin,
+    PluginContext,
+    PluginRegistry,
+    SqlmapPlugin,
+    ZapPlugin,
+)
 from cortexsec.telemetry.benchmark import BenchmarkRecorder
 
 
@@ -38,12 +47,23 @@ class AssessmentService:
         self.plugins = PluginRegistry()
         self.plugins.register(NmapPlugin())
         self.plugins.register(ZapPlugin())
+        self.plugins.register(NucleiPlugin())
+        self.plugins.register(SqlmapPlugin())
+        self.plugins.register(NiktoPlugin())
+        self.plugins.register(GobusterPlugin())
 
     def _run_plugins(self, request: AssessmentRequest, recorder: BenchmarkRecorder) -> Dict[str, dict]:
         if not request.enable_external_tools:
             return {}
 
-        plugin_ids: List[str] = request.plugins or ["scanner.nmap", "scanner.zap"]
+        plugin_ids: List[str] = request.plugins or [
+            "scanner.nmap",
+            "scanner.zap",
+            "scanner.nuclei",
+            "scanner.sqlmap",
+            "scanner.nikto",
+            "scanner.gobuster",
+        ]
         reports = self.plugins.run_many(plugin_ids, PluginContext(request=request))
         recorder.note("plugins", plugin_ids)
         recorder.incr("plugin_runs", len(plugin_ids))

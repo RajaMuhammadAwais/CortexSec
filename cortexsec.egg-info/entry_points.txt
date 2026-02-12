@@ -1,0 +1,2 @@
+[console_scripts]
+cortexsec = cortexsec.cli.main:app

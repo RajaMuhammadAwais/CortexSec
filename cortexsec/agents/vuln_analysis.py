@@ -87,7 +87,8 @@ class VulnAnalysisAgent(BaseAgent):
         recon={context.recon_data}
         attack_surface={context.attack_surface}
 
-        Identify potential vulnerabilities. For each vulnerability, provide:
+        Identify potential vulnerabilities. Also process any findings from external tools provided in the recon data.
+        For each vulnerability, provide:
         - title
         - description
         - severity (Low, Medium, High, Critical)
@@ -170,6 +171,26 @@ class VulnAnalysisAgent(BaseAgent):
             "hypothesis_matrix": matrix,
             "false_positive_risk": fp_risk,
         }
+
+        # Process external tool reports directly
+        external_reports = context.recon_data.get("external_tool_report", {})
+        for tool_name, report in external_reports.items():
+            tool_findings = report.get("findings", [])
+            for tf in tool_findings:
+                finding = Finding(
+                    title=f"[{tool_name.upper()}] {tf.get('type', 'Security Finding')}",
+                    description=tf.get("description", f"Finding detected by {tool_name}"),
+                    severity=tf.get("severity", "Medium"),
+                    confidence=0.9,  # High confidence for tool-confirmed findings
+                    evidence=tf.get("evidence", ""),
+                    mitigation=tf.get("mitigation", "Follow tool-specific remediation guidance."),
+                    cvss_score=tf.get("cvss_score", 5.0),
+                    owasp_mapping=tf.get("owasp_mapping", "A05:2021 - Security Misconfiguration"),
+                    mitre_mapping=tf.get("mitre_mapping", "T1595 - Active Scanning"),
+                )
+                dedupe[self._finding_key(finding)] = finding
+
+        context.findings = list(dedupe.values())
 
         self.log(f"Analysis complete. Total unique findings: {len(context.findings)}")
         return context
