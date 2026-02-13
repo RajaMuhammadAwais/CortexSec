@@ -23,12 +23,23 @@ class VulnAnalysisAgent(BaseAgent):
         return finding
 
     def _apply_escalation_gate(self, finding: Finding) -> Finding:
+        # Enforce 2-agent confirmation minimum for Critical/High issues
+        # Verification count tracks independent validations (e.g., tool + LLM, or multiple tools)
         if finding.severity in {"Critical", "High"} and finding.verification_count < 2:
+            self.log(f"Escalation gate: Downgrading {finding.title} ({finding.severity}) due to insufficient validation (count={finding.verification_count})")
             finding.severity = "Medium"
             finding.description = (
-                f"{finding.description} Escalation gate held this item at Medium pending two-source validation."
+                f"{finding.description} [Escalation Gate: Downgraded from Critical/High pending multi-agent verification]"
             ).strip()
-            finding.confidence = min(finding.confidence, 0.69)
+            finding.confidence = min(finding.confidence, 0.65)
+            
+        # Audit trail for decisions
+        finding.evidence_chain.append({
+            "source": "EscalationGate",
+            "decision": "verified" if finding.verification_count >= 2 else "downgraded",
+            "rationale": f"Verification count: {finding.verification_count}",
+            "timestamp": "2026-02-13T00:00:00Z" # Placeholder for real timestamp
+        })
         return finding
 
     def _severity_weight(self, severity: str) -> float:

@@ -11,8 +11,16 @@ class NmapAdapter(ToolAdapter):
     name = "nmap"
 
     def build_command(self, target: str, options: str = "") -> list[str]:
-        opt_tokens = shlex.split(options) if options else ["-sV", "-Pn"]
-        return ["nmap", *opt_tokens, target]
+        # Enforce safe defaults for nmap
+        safe_defaults = ["-sV", "-Pn", "--open", "--max-rate", "100"]
+        opt_tokens = shlex.split(options) if options else safe_defaults
+        
+        # Filter out potentially invasive scripts if any
+        filtered_tokens = [t for t in opt_tokens if not t.startswith("--script=")]
+        if not any(t.startswith("-s") for t in filtered_tokens):
+            filtered_tokens.append("-sV")
+            
+        return ["nmap", *filtered_tokens, target]
 
     def parse_output(self, stdout: str, stderr: str, exit_code: int, target: str) -> Dict[str, Any]:
         findings: List[Dict[str, Any]] = []

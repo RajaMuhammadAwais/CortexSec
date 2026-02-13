@@ -129,7 +129,10 @@ def test_vuln_analysis_positive_and_negative_paths():
         }
     )
     out = VulnAnalysisAgent(llm).run(context)
-    assert any(f.title == "Weak config" for f in out.findings)
+    # High severity finding should be downgraded to Medium because it only has 1 source (llm-analysis)
+    finding = next(f for f in out.findings if f.title == "Weak config")
+    assert finding.severity == "Medium"
+    assert "Escalation Gate" in finding.description
     assert any("Missing" in f.title for f in out.findings)
     assert "real-world authorized penetration testing practices" in llm.last_system_prompt
     assert "human-analyst workflow" in llm.last_system_prompt
@@ -148,7 +151,16 @@ def test_reasoning_exploitability_and_simulation_agents():
 
     out = ReasoningAgent(DummyLLM()).run(context)
     # 2026 Update: Expect 3 confirmed paths due to attack chaining on Critical finding
+    # 1 for Critical vuln, 1 for Low info, 1 for chained impact from Critical vuln
     assert out.attack_graph["confirmed_paths"] == 3
+    
+    # Check uncertainty tracking
+    critical_node = next(n for n in out.attack_graph["nodes"] if n.get("label") == "Critical vuln")
+    assert critical_node["uncertainty"] == 0.1
+    
+    # Check rationale in edges
+    chain_edge = next(e for e in out.attack_graph["edges"] if e.get("relation") == "enables_chaining")
+    assert "rationale" in chain_edge
 
     out = ExploitabilityAgent(DummyLLM()).run(out)
     assert out.exploitability_assessment["analyzed_findings"] == 2

@@ -12,9 +12,17 @@ class ZapAdapter(ToolAdapter):
     name = "zap"
 
     def build_command(self, target: str, options: str = "") -> list[str]:
+        # ZAP safe mode: use quickurl which is generally a baseline scan
         base = ["zaproxy", "-cmd", "-quickurl", target, "-quickprogress"]
+        
+        # In safe mode, we should avoid active scanning if possible, 
+        # but quickurl is already a mix. We'll just ensure no destructive options are added.
         if options:
-            base.extend(shlex.split(options))
+            forbidden = {"-ascan", "-attack"}
+            opt_tokens = shlex.split(options)
+            safe_options = [t for t in opt_tokens if t.lower() not in forbidden]
+            base.extend(safe_options)
+            
         return base
 
     def parse_output(self, stdout: str, stderr: str, exit_code: int, target: str) -> Dict[str, Any]:

@@ -87,7 +87,7 @@ class ReportAgent(BaseAgent):
         1) Executive Summary
         2) Autonomous Methodology (multi-agent reasoning and coordination)
         3) Coverage, Confidence, Causal-Completeness, and Exploitability-Confidence Termination Criteria
-        4) Attack-Surface + Attack-Graph Causal Analysis
+        4) Attack-Surface + Attack-Graph Causal Analysis (Traceability: every claim links to evidence)
         5) Detailed Findings with OWASP, CVSS, MITRE, and CWE mapping
         6) Real-World Exploitability and Business-Impact Evaluation (non-destructive only)
         7) Orchestrator Learning Summary (reward, strategy shifts, convergence)
@@ -98,6 +98,8 @@ class ReportAgent(BaseAgent):
         12) Destructive-Mode Plan (if enabled): authorization prerequisites, rollback, blast-radius controls
         13) Competitive Research Roadmap (tool parity, maturity score, 30-60-90 day initiatives, KPIs)
         14) Conclusion
+        
+        Traceability Requirement: Ensure every finding and impact claim is explicitly linked to the evidence collected by agents or tools.
 
         Keep it explainable, concise, and professional markdown.
         """

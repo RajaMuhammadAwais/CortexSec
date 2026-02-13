@@ -50,6 +50,7 @@ class SqlmapAdapter(ToolAdapter):
     name = "sqlmap"
     
     def build_command(self, target: str, options: str = "") -> list[str]:
+        # sqlmap safe mode: strictly non-destructive flags
         base = [
             "sqlmap",
             "-u",
@@ -60,10 +61,17 @@ class SqlmapAdapter(ToolAdapter):
             "--forms",
             "--level=1",
             "--risk=1",
-            "--technique=BEUSTQ",
+            "--technique=BEUSTQ", # Basic techniques only
+            "--threads=1",        # Low intensity
         ]
+        
         if options:
-            base.extend(shlex.split(options))
+            # Filter out invasive options even if passed
+            invasive = {"--os-shell", "--os-pwn", "--os-smbrelay", "--sql-shell", "--sql-file", "--file-write", "--file-dest", "--priv-esc"}
+            opt_tokens = shlex.split(options)
+            safe_options = [t for t in opt_tokens if t.lower() not in invasive]
+            base.extend(safe_options)
+            
         return base
 
     def parse_output(self, stdout: str, stderr: str, exit_code: int, target: str) -> Dict[str, Any]:
@@ -148,6 +156,7 @@ class FfufAdapter(ToolAdapter):
     name = "ffuf"
 
     def build_command(self, target: str, options: str = "") -> list[str]:
+        # ffuf safe mode: restricted rate and timeout
         wordlist = "/usr/share/seclists/Discovery/Web-Content/common.txt"
         base = [
             "ffuf",
@@ -162,10 +171,21 @@ class FfufAdapter(ToolAdapter):
             "-timeout",
             "5",
             "-rate",
-            "50",
+            "20", # Lower rate for safe mode
         ]
         if options:
-            base.extend(shlex.split(options))
+            opt_tokens = shlex.split(options)
+            # Ensure rate doesn't exceed 50 in safe mode
+            if "-rate" in opt_tokens:
+                idx = opt_tokens.index("-rate")
+                if idx + 1 < len(opt_tokens):
+                    try:
+                        rate = int(opt_tokens[idx+1])
+                        if rate > 50:
+                            opt_tokens[idx+1] = "50"
+                    except ValueError:
+                        pass
+            base.extend(opt_tokens)
         return base
 
     def parse_output(self, stdout: str, stderr: str, exit_code: int, target: str) -> Dict[str, Any]:

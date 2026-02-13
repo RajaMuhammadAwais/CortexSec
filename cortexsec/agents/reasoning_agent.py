@@ -17,6 +17,9 @@ class ReasoningAgent(BaseAgent):
             finding.reachable = True
             finding_node_id = f"f{i}"
             impact_node_id = f"impact{i}"
+            
+            # Track uncertainty based on confidence
+            uncertainty = round(1.0 - finding.confidence, 2)
 
             nodes.append(
                 {
@@ -25,17 +28,28 @@ class ReasoningAgent(BaseAgent):
                     "label": finding.title,
                     "severity": finding.severity,
                     "reachable": True,
+                    "uncertainty": uncertainty,
                 }
             )
+            
+            # Explicit cause-effect rationale
+            rationale = finding.impact_summary or "Potential unauthorized access, data exposure, or service disruption"
+            
             nodes.append(
                 {
                     "id": impact_node_id,
                     "type": "impact",
-                    "label": "Potential unauthorized access, data exposure, or service disruption",
+                    "label": rationale,
+                    "cause": finding.title,
                 }
             )
             edges.append({"from": "target", "to": finding_node_id, "relation": "has_weakness"})
-            edges.append({"from": finding_node_id, "to": impact_node_id, "relation": "can_lead_to"})
+            edges.append({
+                "from": finding_node_id, 
+                "to": impact_node_id, 
+                "relation": "can_lead_to",
+                "rationale": f"Exploitation of {finding.title} leads to {rationale}"
+            })
 
             # 2026 Logic: Attack Chaining
             # If critical, infer a derived attack path (e.g., lateral movement or API abuse)
@@ -45,9 +59,15 @@ class ReasoningAgent(BaseAgent):
                     "id": chained_node_id,
                     "type": "impact", 
                     "label": "Lateral Movement / API Abuse (Derived)",
-                    "severity": "High"
+                    "severity": "High",
+                    "uncertainty": min(1.0, uncertainty + 0.2)
                 })
-                edges.append({"from": impact_node_id, "to": chained_node_id, "relation": "enables_chaining"})
+                edges.append({
+                    "from": impact_node_id, 
+                    "to": chained_node_id, 
+                    "relation": "enables_chaining",
+                    "rationale": "Critical impact allows for further exploitation of internal resources"
+                })
 
         weakness_nodes = [n for n in nodes if n["type"] == "weakness"]
         impact_nodes = [n for n in nodes if n["type"] == "impact"]
