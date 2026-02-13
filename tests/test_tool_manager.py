@@ -27,3 +27,16 @@ def test_tool_manager_rejects_unknown_tool():
         assert False, "expected ValueError"
     except ValueError as exc:
         assert "Unsupported tool" in str(exc)
+
+
+def test_tool_manager_blocks_unsafe_option_in_safe_mode():
+    manager = ToolManager({"dummy": DummyAdapter()})
+    result = manager.invoke({"tool": "dummy", "target": "example.com", "options": "--os-shell", "safe_mode": True})
+    assert result["status"] == "blocked"
+    assert result["error"] == "safe-mode-policy-blocked"
+
+
+def test_tool_manager_allows_unsafe_option_when_safe_mode_disabled():
+    manager = ToolManager({"dummy": DummyAdapter()})
+    result = manager.invoke({"tool": "dummy", "target": "example.com", "options": "--os-shell", "safe_mode": False})
+    assert result["status"] == "ok"

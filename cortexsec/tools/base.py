@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shlex
 import subprocess
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
@@ -11,6 +12,29 @@ class ToolAdapter(ABC):
     name: str
     timeout_seconds: int = 300
 
+    SAFE_MODE_BLOCKED_TOKENS = {
+        "--os-shell",
+        "--os-pwn",
+        "--os-smbrelay",
+        "--sql-shell",
+        "--sql-file",
+        "--file-write",
+        "--file-dest",
+        "--registry-read",
+        "--registry-write",
+        "--priv-esc",
+        "--tor",
+        "--tamper",
+        "--flush-session",
+        "--drop-set-cookie",
+        "--threads",
+        "--data",
+        "--method",
+        "-x",
+        "--request-file",
+        "--eval",
+    }
+
     @abstractmethod
     def build_command(self, target: str, options: str = "") -> list[str]:
         raise NotImplementedError
@@ -19,11 +43,33 @@ class ToolAdapter(ABC):
     def parse_output(self, stdout: str, stderr: str, exit_code: int, target: str) -> Dict[str, Any]:
         raise NotImplementedError
 
+    def _check_safe_mode_policy(self, options: str) -> str | None:
+        tokens = [token.strip().lower() for token in shlex.split(options or "")]
+        for token in tokens:
+            if token in self.SAFE_MODE_BLOCKED_TOKENS:
+                return token
+        return None
+
     def invoke(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         target = payload.get("target", "")
         options = payload.get("options", "")
-        argv = self.build_command(target=target, options=options)
+        safe_mode = payload.get("safe_mode", True)
         timestamp = datetime.now(timezone.utc).isoformat()
+
+        if safe_mode:
+            blocked_token = self._check_safe_mode_policy(options)
+            if blocked_token:
+                return {
+                    "tool": self.name,
+                    "target": target,
+                    "timestamp_utc": timestamp,
+                    "status": "blocked",
+                    "error": "safe-mode-policy-blocked",
+                    "blocked_option": blocked_token,
+                    "raw": {"stdout": "", "stderr": f"Blocked option in safe mode: {blocked_token}"},
+                }
+
+        argv = self.build_command(target=target, options=options)
 
         try:
             proc = subprocess.run(

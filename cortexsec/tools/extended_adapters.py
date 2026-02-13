@@ -50,7 +50,18 @@ class SqlmapAdapter(ToolAdapter):
     name = "sqlmap"
     
     def build_command(self, target: str, options: str = "") -> list[str]:
-        base = ["sqlmap", "-u", target, "--batch", "--random-agent"]
+        base = [
+            "sqlmap",
+            "-u",
+            target,
+            "--batch",
+            "--random-agent",
+            "--crawl=1",
+            "--forms",
+            "--level=1",
+            "--risk=1",
+            "--technique=BEUSTQ",
+        ]
         if options:
             base.extend(shlex.split(options))
         return base
@@ -122,6 +133,61 @@ class GobusterAdapter(ToolAdapter):
                     "evidence": line.strip()
                 })
         
+        return {
+            "tool": self.name,
+            "target": target,
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+            "status": "ok" if exit_code == 0 else "error",
+            "exit_code": exit_code,
+            "findings": findings,
+            "raw": {"stdout": stdout, "stderr": stderr},
+        }
+
+
+class FfufAdapter(ToolAdapter):
+    name = "ffuf"
+
+    def build_command(self, target: str, options: str = "") -> list[str]:
+        wordlist = "/usr/share/seclists/Discovery/Web-Content/common.txt"
+        base = [
+            "ffuf",
+            "-u",
+            f"{target.rstrip('/')}/FUZZ",
+            "-w",
+            wordlist,
+            "-of",
+            "json",
+            "-mc",
+            "200,204,301,302,307,401,403",
+            "-timeout",
+            "5",
+            "-rate",
+            "50",
+        ]
+        if options:
+            base.extend(shlex.split(options))
+        return base
+
+    def parse_output(self, stdout: str, stderr: str, exit_code: int, target: str) -> Dict[str, Any]:
+        findings: List[Dict[str, Any]] = []
+
+        try:
+            data = json.loads(stdout) if stdout.strip() else {}
+            for result in data.get("results", []):
+                findings.append(
+                    {
+                        "type": "ffuf_endpoint_discovery",
+                        "severity": "Info",
+                        "evidence": f"{result.get('url', '')} (status={result.get('status', 'unknown')}, words={result.get('words', 'unknown')})",
+                        "path": result.get("input", {}).get("FUZZ", ""),
+                    }
+                )
+        except json.JSONDecodeError:
+            for line in stdout.splitlines():
+                normalized = line.strip()
+                if normalized and "[Status:" in normalized:
+                    findings.append({"type": "ffuf_endpoint_discovery", "severity": "Info", "evidence": normalized})
+
         return {
             "tool": self.name,
             "target": target,

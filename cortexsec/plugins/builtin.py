@@ -13,7 +13,7 @@ class NmapPlugin(SecurityPlugin):
         self._adapter = NmapAdapter()
 
     def run(self, context: PluginContext) -> Dict[str, Any]:
-        return self._adapter.invoke({"tool": "nmap", "target": context.request.target, "options": "-sV -Pn"})
+        return self._adapter.invoke({"tool": "nmap", "target": context.request.target, "options": "-sV -Pn", "safe_mode": context.request.safe_mode})
 
 
 class ZapPlugin(SecurityPlugin):
@@ -23,4 +23,4 @@ class ZapPlugin(SecurityPlugin):
         self._adapter = ZapAdapter()
 
     def run(self, context: PluginContext) -> Dict[str, Any]:
-        return self._adapter.invoke({"tool": "zap", "target": context.request.target, "options": ""})
+        return self._adapter.invoke({"tool": "zap", "target": context.request.target, "options": "", "safe_mode": context.request.safe_mode})
