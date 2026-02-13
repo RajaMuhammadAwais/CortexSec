@@ -1,6 +1,7 @@
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 from cortexsec.llm.base import BaseLLM
+from cortexsec.api.contracts import ScopeFile
 import logging
 
 # Configure logging
@@ -19,9 +20,14 @@ class Finding(BaseModel):
     cvss_score: Optional[float] = None
     owasp_mapping: Optional[str] = None
     mitre_mapping: Optional[str] = None
+    cwe_id: Optional[str] = None
+    compliance_tags: Dict[str, List[str]] = Field(default_factory=dict)
     impact_summary: Optional[str] = None
     exploitability_summary: Optional[str] = None
     exploitability_confidence: float = 0.0
+    evidence_chain: List[Dict[str, Any]] = Field(default_factory=list)
+    independent_validations: List[str] = Field(default_factory=list)
+    verification_count: int = 0
     reachable: bool = True
     analyzed: bool = False
 
@@ -41,7 +47,7 @@ class PentestContext(BaseModel):
     memory: Dict[str, Any] = Field(default_factory=dict)
     orchestrator_learning: Dict[str, Any] = Field(default_factory=dict)
     assessment_metrics: Dict[str, Any] = Field(default_factory=dict)
-    scientific_analysis: Dict[str, Any] = Field(default_factory=dict)
+    evidence_analysis: Dict[str, Any] = Field(default_factory=dict)
     remediation_plan: Dict[str, Any] = Field(default_factory=dict)
     stop_reason: str = ""
     history: List[Dict[str, Any]] = Field(default_factory=list)
@@ -50,6 +56,7 @@ class PentestContext(BaseModel):
     max_no_finding_extensions: int = 3
     pro_user: bool = False
     destructive_mode: bool = False
+    scope: Optional[ScopeFile] = None
 
 
 class BaseAgent:

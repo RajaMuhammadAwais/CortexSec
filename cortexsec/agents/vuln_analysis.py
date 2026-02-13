@@ -1,6 +1,7 @@
 from cortexsec.core.agent import BaseAgent, PentestContext, Finding
 from cortexsec.utils.http_security import run_http_security_quick_checks
 from cortexsec.agents.real_world_guidance import real_world_prompt
+from cortexsec.utils.compliance_mapping import enrich_finding_with_compliance
 
 
 class VulnAnalysisAgent(BaseAgent):
@@ -13,6 +14,22 @@ class VulnAnalysisAgent(BaseAgent):
     def _finding_key(self, finding: Finding) -> str:
         return f"{finding.title}|{finding.evidence}"
 
+
+    def _append_evidence(self, finding: Finding, source: str, detail: str) -> Finding:
+        finding.evidence_chain.append({"source": source, "detail": detail})
+        if source not in finding.independent_validations:
+            finding.independent_validations.append(source)
+        finding.verification_count = len(finding.independent_validations)
+        return finding
+
+    def _apply_escalation_gate(self, finding: Finding) -> Finding:
+        if finding.severity in {"Critical", "High"} and finding.verification_count < 2:
+            finding.severity = "Medium"
+            finding.description = (
+                f"{finding.description} Escalation gate held this item at Medium pending two-source validation."
+            ).strip()
+            finding.confidence = min(finding.confidence, 0.69)
+        return finding
 
     def _severity_weight(self, severity: str) -> float:
         table = {"Critical": 1.0, "High": 0.8, "Medium": 0.6, "Low": 0.3}
@@ -122,6 +139,7 @@ class VulnAnalysisAgent(BaseAgent):
                 owasp_mapping=f_data.get("owasp_mapping"),
                 mitre_mapping=f_data.get("mitre_mapping"),
             )
+            finding = self._append_evidence(finding, "llm-analysis", finding.evidence or "model output")
             dedupe[self._finding_key(finding)] = finding
 
         raw_recon = context.recon_data.get("raw", {})
@@ -142,6 +160,7 @@ class VulnAnalysisAgent(BaseAgent):
                     owasp_mapping=f_data.get("owasp_mapping"),
                     mitre_mapping=f_data.get("mitre_mapping"),
                 )
+                finding = self._append_evidence(finding, "http-quick-check", finding.evidence)
                 dedupe[self._finding_key(finding)] = finding
         else:
             self.log("Skipping HTTP quick checks because recon did not return response headers.")
@@ -149,6 +168,7 @@ class VulnAnalysisAgent(BaseAgent):
         payload_signals = [p for p in context.payload_tests if p.get("status") == "needs-review"]
         for signal in payload_signals:
             finding = self._payload_signal_to_finding(signal)
+            finding = self._append_evidence(finding, "payload-validation", finding.evidence)
             dedupe[self._finding_key(finding)] = finding
 
         matrix = self._build_hypothesis_matrix(context.payload_tests)
@@ -166,8 +186,8 @@ class VulnAnalysisAgent(BaseAgent):
         elif signal_ratio >= 0.15:
             fp_risk = "medium"
 
-        context.scientific_analysis = {
-            "method": "Embedded scientific confidence calibration in VulnAnalysisAgent",
+        context.evidence_analysis = {
+            "method": "Evidence-based confidence calibration in VulnAnalysisAgent",
             "hypothesis_matrix": matrix,
             "false_positive_risk": fp_risk,
         }
@@ -188,9 +208,13 @@ class VulnAnalysisAgent(BaseAgent):
                     owasp_mapping=tf.get("owasp_mapping", "A05:2021 - Security Misconfiguration"),
                     mitre_mapping=tf.get("mitre_mapping", "T1595 - Active Scanning"),
                 )
+                finding = self._append_evidence(finding, f"tool:{tool_name}", finding.evidence)
                 dedupe[self._finding_key(finding)] = finding
 
-        context.findings = list(dedupe.values())
+        context.findings = [
+            enrich_finding_with_compliance(self._apply_escalation_gate(finding))
+            for finding in list(dedupe.values())
+        ]
 
         self.log(f"Analysis complete. Total unique findings: {len(context.findings)}")
         return context

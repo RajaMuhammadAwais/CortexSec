@@ -1,7 +1,7 @@
 import pytest
 from cortexsec.api.contracts import AssessmentRequest
 from cortexsec.api.service import AssessmentService
-from cortexsec.plugins import NucleiPlugin, SqlmapPlugin, NiktoPlugin, GobusterPlugin
+from cortexsec.plugins import NucleiPlugin, SqlmapPlugin, NiktoPlugin, GobusterPlugin, FfufPlugin
 
 def test_plugin_registration():
     service = AssessmentService()
@@ -10,6 +10,7 @@ def test_plugin_registration():
     assert "scanner.sqlmap" in available
     assert "scanner.nikto" in available
     assert "scanner.gobuster" in available
+    assert "scanner.ffuf" in available
     assert isinstance(service.plugins.get("scanner.nuclei"), NucleiPlugin)
 
 def test_nuclei_adapter_parsing():
@@ -45,3 +46,15 @@ def test_gobuster_adapter_parsing():
     result = adapter.parse_output(stdout, "", 0, "http://example.com")
     assert len(result["findings"]) == 1
     assert "/admin" in result["findings"][0]["evidence"]
+
+
+def test_ffuf_adapter_parsing():
+    from cortexsec.tools.extended_adapters import FfufAdapter
+
+    adapter = FfufAdapter()
+    stdout = '{"results": [{"url": "http://example.com/admin", "status": 200, "words": 120, "input": {"FUZZ": "admin"}}]}'
+    result = adapter.parse_output(stdout, "", 0, "http://example.com")
+
+    assert len(result["findings"]) == 1
+    assert result["findings"][0]["type"] == "ffuf_endpoint_discovery"
+    assert "admin" in result["findings"][0]["evidence"]

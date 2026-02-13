@@ -314,7 +314,7 @@ def test_cli_destructive_requires_pro_user():
     assert "requires --pro-user" in result.stdout
 
 
-def test_vuln_analysis_embeds_scientific_logic():
+def test_vuln_analysis_embeds_evidence_logic():
     context = base_context()
     context.recon_data = {"raw": {"headers": {"Server": "nginx"}}, "analysis": {}}
     context.payload_tests = [
@@ -326,9 +326,22 @@ def test_vuln_analysis_embeds_scientific_logic():
     llm = DummyLLM(json_response={"findings": [{"title": "A", "description": "d", "severity": "High", "confidence": 0.6, "evidence": "e"}]})
     out = VulnAnalysisAgent(llm).run(context)
 
-    assert out.scientific_analysis["hypothesis_matrix"]["tests_total"] == 3
-    assert out.scientific_analysis["false_positive_risk"] in {"low", "medium", "high"}
+    assert out.evidence_analysis["hypothesis_matrix"]["tests_total"] == 3
+    assert out.evidence_analysis["false_positive_risk"] in {"low", "medium", "high"}
     assert all(0.0 <= f.confidence <= 1.0 for f in out.findings)
+    assert all(f.verification_count >= 1 for f in out.findings)
+
+
+def test_vuln_analysis_requires_two_sources_for_high_or_critical():
+    context = base_context()
+    context.recon_data = {"raw": {"headers": {"Server": "nginx"}}, "analysis": {}}
+
+    llm = DummyLLM(json_response={"findings": [{"title": "Critical from model", "description": "d", "severity": "Critical", "confidence": 0.95, "evidence": "e"}]})
+    out = VulnAnalysisAgent(llm).run(context)
+
+    gated = next(f for f in out.findings if f.title == "Critical from model")
+    assert gated.verification_count == 1
+    assert gated.severity == "Medium"
 
 
 def test_payload_agent_control_suppresses_false_positive_signal(monkeypatch):

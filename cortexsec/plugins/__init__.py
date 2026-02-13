@@ -1,6 +1,6 @@
 from cortexsec.plugins.base import PluginContext, PluginRegistry, SecurityPlugin
 from cortexsec.plugins.builtin import NmapPlugin, ZapPlugin
-from cortexsec.plugins.extended_plugins import NucleiPlugin, SqlmapPlugin, NiktoPlugin, GobusterPlugin
+from cortexsec.plugins.extended_plugins import NucleiPlugin, SqlmapPlugin, NiktoPlugin, GobusterPlugin, FfufPlugin
 
 __all__ = [
     "PluginContext", 
@@ -11,5 +11,6 @@ __all__ = [
     "NucleiPlugin",
     "SqlmapPlugin",
     "NiktoPlugin",
-    "GobusterPlugin"
+    "GobusterPlugin",
+    "FfufPlugin"
 ]

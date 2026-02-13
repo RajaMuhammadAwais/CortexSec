@@ -28,6 +28,7 @@ from cortexsec.core.sandbox import DockerSandboxRunner
 from cortexsec.llm.factory import create_llm
 from cortexsec.plugins import (
     GobusterPlugin,
+    FfufPlugin,
     NiktoPlugin,
     NmapPlugin,
     NucleiPlugin,
@@ -51,6 +52,7 @@ class AssessmentService:
         self.plugins.register(SqlmapPlugin())
         self.plugins.register(NiktoPlugin())
         self.plugins.register(GobusterPlugin())
+        self.plugins.register(FfufPlugin())
 
     def _run_plugins(self, request: AssessmentRequest, recorder: BenchmarkRecorder) -> Dict[str, dict]:
         if not request.enable_external_tools:
@@ -63,6 +65,7 @@ class AssessmentService:
             "scanner.sqlmap",
             "scanner.nikto",
             "scanner.gobuster",
+            "scanner.ffuf",
         ]
         reports = self.plugins.run_many(plugin_ids, PluginContext(request=request))
         recorder.note("plugins", plugin_ids)
@@ -127,6 +130,7 @@ class AssessmentService:
             target=request.target,
             mode=request.mode,
             recon_data={"external_tool_report": plugin_reports} if plugin_reports else {},
+            scope=request.scope,
         )
         out = supervisor.run(context)
 

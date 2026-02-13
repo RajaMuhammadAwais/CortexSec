@@ -24,10 +24,15 @@ class ReportAgent(BaseAgent):
                     "mitigation": f.mitigation,
                     "owasp": f.owasp_mapping,
                     "mitre": f.mitre_mapping,
+                    "cwe": f.cwe_id,
+                    "compliance": f.compliance_tags,
                     "reachable": f.reachable,
                     "analyzed": f.analyzed,
                     "impact_summary": f.impact_summary,
                     "exploitability_summary": f.exploitability_summary,
+                    "verification_count": f.verification_count,
+                    "independent_validations": f.independent_validations,
+                    "evidence_chain": f.evidence_chain,
                 }
             )
 
@@ -49,8 +54,8 @@ class ReportAgent(BaseAgent):
         Exploitability Assessment:
         {context.exploitability_assessment}
 
-        Scientific Analysis:
-        {context.scientific_analysis}
+        Evidence Analysis:
+        {context.evidence_analysis}
 
         Safe Attack Simulation Playbooks:
         {context.attack_simulation}
@@ -83,15 +88,16 @@ class ReportAgent(BaseAgent):
         2) Autonomous Methodology (multi-agent reasoning and coordination)
         3) Coverage, Confidence, Causal-Completeness, and Exploitability-Confidence Termination Criteria
         4) Attack-Surface + Attack-Graph Causal Analysis
-        5) Detailed Findings with OWASP, CVSS, MITRE mapping
+        5) Detailed Findings with OWASP, CVSS, MITRE, and CWE mapping
         6) Real-World Exploitability and Business-Impact Evaluation (non-destructive only)
         7) Orchestrator Learning Summary (reward, strategy shifts, convergence)
         8) Pentest-Style Real-World Payload Analysis (hypothesis, observed behavior, risk, false-positive checks)
-        9) Scientific Confidence Calibration (hypothesis quality, signal strength, false-positive risk)
-        10) Prioritized Remediation Roadmap
-        11) Destructive-Mode Plan (if enabled): authorization prerequisites, rollback, blast-radius controls
-        12) Competitive Research Roadmap (tool parity, maturity score, 30-60-90 day initiatives, KPIs)
-        13) Conclusion
+        9) Evidence Confidence Calibration (hypothesis quality, signal strength, false-positive risk)
+        10) Enterprise Compliance Mapping (PCI-DSS, NIST 800-53, ISO 27001, GDPR)
+        11) Prioritized Remediation Roadmap
+        12) Destructive-Mode Plan (if enabled): authorization prerequisites, rollback, blast-radius controls
+        13) Competitive Research Roadmap (tool parity, maturity score, 30-60-90 day initiatives, KPIs)
+        14) Conclusion
 
         Keep it explainable, concise, and professional markdown.
         """
